@@ -2,6 +2,9 @@
 #
 # APPEND-ONLY. No dates: git records ordering already, and a date is a number
 # that can be typed wrong with nothing checking it. state is open or closed.
+#
+# The header row above is the schema. bin/ledger.sh derives this file's field
+# count from it rather than holding a number of its own; see bin/tsvhdr.sh.
 UNWITNESSED-PASS	bin/check.sh awk declaration extractor, holes 1-5	closed
 UNWITNESSED-PASS	bin/check.sh census yielding no declarations	closed
 UNWITNESSED-PASS	bin/report.sh per-file table regex, hole 6	closed
@@ -15,3 +18,12 @@ UNCHARACTERIZED-COST	census wall clock compared in STATE.md	closed
 UNCHARACTERIZED-COST	gate cost compared across two uncharacterized containers	open
 ATTRIBUTION-DRIFT	syntax-error probe caught by check 3, credited to check 2	open
 UNWITNESSED-PASS	bin/check.sh census filter unless n.isInternal, hole 6	open
+SCHEMA-RESTATED-DOWNSTREAM	bin/ledger.sh shape check, one literal 3 for all three files	closed
+SCHEMA-RESTATED-DOWNSTREAM	bin/ledger.sh gates loop, control swallowed the appended fourth field	closed
+SCHEMA-RESTATED-DOWNSTREAM	bin/feedback.sh expiry lookup, expires_after read as the literal $4	closed
+SCHEMA-RESTATED-DOWNSTREAM	bin/verify.sh check 8 fixtures, three-field gates rows against four-column data	closed
+SCHEMA-RESTATED-DOWNSTREAM	ledger/gates.tsv header row, three columns declared over four-column data	closed
+UNWITNESSED-PASS	bin/verify.sh check 8 ledger cases, exit code as the assertion	closed
+UNWITNESSED-PASS	bin/verify.sh check 10 threshold cases, exit code as the assertion	closed
+GATE-NAME-OVERCLAIMS	bin/verify.sh check 10, name says deletion threshold, aborted on unresolvable age	closed
+GATE-NAME-OVERCLAIMS	bin/verify.sh check 10, the EXPIRED branch itself has no negative control	open

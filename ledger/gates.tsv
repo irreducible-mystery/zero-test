@@ -1,8 +1,20 @@
-# gate_id	closes	control
+# gate_id	closes	control	expires_after
+#
+# THE HEADER ROW ABOVE IS THE SCHEMA, and it is the only place this file's shape
+# is written down. bin/ledger.sh takes its field count from it; bin/feedback.sh
+# locates expires_after by name in it. Neither contains a column count or a
+# column index -- see bin/tsvhdr.sh. Adding a column means editing the row above
+# and nothing else. It did not, once, and two consumers broke in a row for it.
 #
 # control: the negative control that proves this gate fires. Two legal
 # placeholders: a control, or the token 'uncontrolled' -- known to have none,
 # counted and displayed. '-' is not legal: it means nobody looked.
+#
+# expires_after: commits since this row was declared, past which a gate with
+# zero field-catches is a deletion candidate. 'never' is a declared terminal --
+# an explicit claim that this gate should outlive evidence, visible in a diff
+# and counted. '-' is not legal: it means nobody decided. Age is derived from
+# git by bin/feedback.sh and is never typed.
 verify:1	UNWITNESSED-PASS	probes/ rejected by the same census	never
 verify:2	UNWITNESSED-PASS	verify.sh check 6	never
 verify:3	UNWITNESSED-PASS	uncontrolled	40

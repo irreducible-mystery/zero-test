@@ -17,6 +17,7 @@
 # ENFORCES: schema on friction.tsv and events.tsv, gate_id resolvable against
 # gates.tsv, kind/outcome from a closed vocabulary. Then computes yield.
 set -u
+BIN=$(dirname "$0")
 L=${1:-ledger}
 fail=0
 strip() { grep -v '^#' "$1" 2>/dev/null | grep -v '^[[:space:]]*$'; }
@@ -24,6 +25,37 @@ strip() { grep -v '^#' "$1" 2>/dev/null | grep -v '^[[:space:]]*$'; }
 for f in friction events gates; do
     [ -f "$L/$f.tsv" ] || { echo "  ABORT: $L/$f.tsv missing"; exit 1; }
 done
+
+# ---- schema ----------------------------------------------------------------
+# Every column this script reads is located BY NAME in the file's own header
+# row. expires_after used to be the literal $4 here -- this script is the reason
+# that column exists, and hardcoding its position is the same defect that broke
+# ledger.sh twice in a row. A renamed or reordered column now aborts loudly
+# instead of feeding the expiry threshold whatever happens to sit at index 4.
+col() { sh "$BIN/tsvhdr.sh" "$L/$1.tsv" "$2" 2>/dev/null; }
+need_col() {   # <file> <column name> <index this script reads it at>
+    [ "$(col "$1" "$2")" = "$3" ] || {
+        echo "  ABORT: $L/$1.tsv must declare '$2' as column $3 in its header row."
+        echo "         feedback.sh reads it there. Appending columns is fine;"
+        echo "         renaming or reordering one is not."
+        exit 1
+    }
+}
+need_col gates    gate_id 1
+need_col friction gate_id 1
+need_col friction site    2
+need_col friction kind    3
+need_col events   gate_id 1
+need_col events   outcome 2
+
+EXPIRES=$(col gates expires_after)
+[ -n "$EXPIRES" ] || {
+    echo "  ABORT: $L/gates.tsv declares no 'expires_after' column."
+    echo "         It is the column the deletion threshold reads. Add it to the"
+    echo "         header row, or this script cannot tell a gate's age from its id."
+    exit 1
+}
+
 GATES=$(strip "$L/gates.tsv" | cut -f1 | sort -u)
 [ -n "$GATES" ] || { echo "  ABORT: no gates declared - refusing a vacuous pass"; exit 1; }
 
@@ -56,7 +88,7 @@ HEADN=$(git rev-list --count HEAD 2>/dev/null || echo 0)
 for g in $GATES; do
     fr=$(strip "$L/friction.tsv" | cut -f1 | grep -cx "$g")
     fc=$(strip "$L/events.tsv" | awk -F'\t' -v G="$g" '$1==G && $2=="field-catch"' | wc -l | tr -d ' ')
-    exp=$(strip "$L/gates.tsv" | awk -F'\t' -v G="$g" '$1==G{print $4}')
+    exp=$(strip "$L/gates.tsv" | awk -F'\t' -v G="$g" -v c="$EXPIRES" '$1==G{print $(c+0)}')
     case "$exp" in
         '' ) echo "  ABORT: gate '$g' declares no expires_after. '-' is not a decision."; fail=1; continue ;;
         '-') echo "  ABORT: gate '$g' has expires_after='-'. Decide, or write 'never'."; fail=1; continue ;;

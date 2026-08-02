@@ -75,18 +75,19 @@ below is derived from `ledger/` by that script.
 
 | | |
 |---|---|
-| Classes | 4 |
-| Recorded sites | 13 |
-| Open sites | 5 |
-| Gates | 11 |
-| Gates with no negative control | 3 |
+| Classes | 5 |
+| Recorded sites | 22 |
+| Open sites | 6 |
+| Gates | 13 |
+| Gates with no negative control | 4 |
 
 | class | sites | open | mechanism | search key |
 |---|---|---|---|---|
-| `UNWITNESSED-PASS` | 6 | 1 | mechanized | `grep -nE 'PASS\|exit 0\|exit $fail' bin/*.sh` |
-| `GATE-NAME-OVERCLAIMS` | 4 | 2 | mechanized | `for each gate, compare its printed title to the predicate it evaluates` |
+| `UNWITNESSED-PASS` | 8 | 1 | mechanized | `grep -nE 'PASS\|exit 0\|exit $fail' bin/*.sh` |
+| `GATE-NAME-OVERCLAIMS` | 6 | 3 | mechanized | `for each gate, compare its printed title to the predicate it evaluates` |
 | `UNCHARACTERIZED-COST` | 2 | 1 | mechanized | `grep -nE 'date \+%s\|wall clock\|SECS' bin/*.sh` |
 | `ATTRIBUTION-DRIFT` | 1 | 1 | **unmechanized** | `-` |
+| `SCHEMA-RESTATED-DOWNSTREAM` | 5 | 0 | mechanized | `grep -nE 'cut -f\|-F.\\t.\|-F.[$]TAB.\|IFS=.[$]TAB.' bin/*.sh` |
 
 
 The last column is what makes "a class is closed by a sweep, not a fix" a

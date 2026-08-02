@@ -47,6 +47,7 @@
 
 set -u
 
+BIN=$(dirname "$0")
 dir=${1:-ledger}
 [ -d "$dir" ] || { echo "ledger.sh: no such directory: $dir" >&2; exit 2; }
 TAB=$(printf '\t')
@@ -71,15 +72,44 @@ done
 err() { echo "ledger.sh: $*" >&2; fail=1; }
 
 # ---- shape ----------------------------------------------------------------
-awk -F"$TAB" -v OFS= 'NF!=3 {print FILENAME": line "FNR": expected 3 tab-separated fields, found "NF}' \
-    "$work/classes" "$work/sites" "$work/gates" > "$work/shape"
+# The expected field count is DERIVED from each file's own header row. There is
+# no column count in this script, and there must never be one again: the literal
+# 3 that used to be here covered all three files, gates.tsv grew a fourth
+# column, and this check began rejecting the ledger it exists to validate.
+# Widening the literal to a per-file number moved the same defect one file over,
+# into verify.sh's fixtures. See bin/tsvhdr.sh.
+#
+# Counting is necessary and not sufficient. The loops below index columns BY
+# POSITION, so each file's header is also asserted to START with the names this
+# script depends on. Appending a column stays legal -- that is the entire point
+# -- while renaming or reordering one is refused rather than silently misread.
+#
+# The silent misread is not hypothetical. `read -r gid closes control` against a
+# four-column gates.tsv leaves the fourth field glued to the third: no row
+# equals 'uncontrolled' any more, and STATE.md reports zero gates without a
+# negative control while four of them have none. Nothing rings. Hence `rest`.
+: > "$work/shape"
+check_shape() {   # <file> <stripped copy> <columns this script reads by position>
+    h=$(sh "$BIN/tsvhdr.sh" "$1" 2>&1) || { err "$h"; return; }
+    want=${h%% *}; names=${h#* }
+    case "$names " in
+        "$3 "*) ;;
+        *) err "$1 header is '$names', but ledger.sh reads '$3' by position. Appending a column is fine; renaming or reordering one is not." ;;
+    esac
+    awk -F"$TAB" -v want="$want" -v nm="$1" \
+        'NF != want {print nm": line "FNR": header declares "want" tab-separated fields, found "NF}' \
+        "$2" >> "$work/shape"
+}
+check_shape "$C" "$work/classes" "class_id mechanism search_key"
+check_shape "$S" "$work/sites"   "class_id site state"
+check_shape "$G" "$work/gates"   "gate_id closes control"
 [ -s "$work/shape" ] && { sed 's/^/ledger.sh: /' "$work/shape" >&2; fail=1; }
 
 # ---- classes --------------------------------------------------------------
 cut -f1 "$work/classes" | sort | uniq -d > "$work/dupclass"
 [ -s "$work/dupclass" ] && err "duplicate class ids:$(tr '\n' ' ' < "$work/dupclass")"
 
-while IFS="$TAB" read -r id mech key; do
+while IFS="$TAB" read -r id mech key rest; do
     [ -n "${id:-}" ] || continue
     printf '%s\n' "$id" | grep -qE '^[A-Z][A-Z0-9-]*$' \
         || err "class id is not upper-kebab: '$id'"
@@ -94,7 +124,7 @@ done < "$work/classes"
 cut -f1,2 "$work/sites" | sort | uniq -d > "$work/dupsite"
 [ -s "$work/dupsite" ] && { echo "ledger.sh: duplicate (class, site) rows:" >&2; sed 's/^/    /' "$work/dupsite" >&2; fail=1; }
 
-while IFS="$TAB" read -r cid site state; do
+while IFS="$TAB" read -r cid site state rest; do
     [ -n "${cid:-}" ] || continue
     cut -f1 "$work/classes" | grep -qxF "$cid" || err "site names unknown class '$cid': $site"
     case "$state" in
@@ -104,7 +134,7 @@ while IFS="$TAB" read -r cid site state; do
 done < "$work/sites"
 
 # A class nobody has recorded a site for is a category, not a class.
-while IFS="$TAB" read -r id _ _; do
+while IFS="$TAB" read -r id rest; do
     [ -n "${id:-}" ] || continue
     cut -f1 "$work/sites" | grep -qxF "$id" || err "class '$id' has no recorded site. A class with no site is a category."
 done < "$work/classes"
@@ -114,7 +144,9 @@ cut -f1 "$work/gates" | sort | uniq -d > "$work/dupgate"
 [ -s "$work/dupgate" ] && err "duplicate gate ids:$(tr '\n' ' ' < "$work/dupgate")"
 
 n_uncontrolled=0
-while IFS="$TAB" read -r gid closes control; do
+# `rest` is load-bearing: without it `control` absorbs every column appended
+# after it, and the two token comparisons below stop matching anything.
+while IFS="$TAB" read -r gid closes control rest; do
     [ -n "${gid:-}" ] || continue
     cut -f1 "$work/classes" | grep -qxF "$closes" || err "gate '$gid' closes unknown class '$closes'"
     # '-' means nobody looked. 'uncontrolled' means someone did and the answer
@@ -125,7 +157,7 @@ done < "$work/gates"
 
 # ---- THE ESCALATION -------------------------------------------------------
 rows=''; ripe=''
-while IFS="$TAB" read -r id mech key; do
+while IFS="$TAB" read -r id mech key rest; do
     [ -n "${id:-}" ] || continue
     open=$(awk -F"$TAB" -v c="$id" '$1==c && $3=="open"' "$work/sites" | wc -l | tr -d ' ')
     tot=$(awk -F"$TAB" -v c="$id" '$1==c' "$work/sites" | wc -l | tr -d ' ')
