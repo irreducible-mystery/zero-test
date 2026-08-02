@@ -33,3 +33,5 @@ a:extremal	unknown	question/PREREGISTRATION.md	sweep all Sturmian words of denom
 a:cone	excluded	question/evidence/Cone.lean	bin/check.sh run against a Mathlib toolchain: the file cannot witness its own axiom-freedom
 a:rotation	unknown	ledger/sites.tsv	git log -p ledger/sites.tsv, then gaps between successive filings of one class
 a:emptydir	excluded	center/	a storage medium that can represent an empty directory: git cannot, so center/EMPTY exists and is 0 bytes
+a:modulus	excluded	question/evidence/Modulus.lean	bin/check.sh run against a Mathlib toolchain: it imports Mathlib and the core census cannot elaborate it
+a:ceiling	excluded	question/evidence/GeneralCeiling.lean	bin/check.sh run against a Mathlib toolchain: it imports Mathlib and the core census cannot elaborate it

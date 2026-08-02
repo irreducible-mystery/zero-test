@@ -138,8 +138,26 @@ cut -f1 "$work/gates" | sort | uniq -d > "$work/dupgate"
 [ -s "$work/dupgate" ] && err "duplicate gate ids:$(tr '\n' ' ' < "$work/dupgate")"
 
 n_uncontrolled=0
-while IFS="$TAB" read -r gid closes control; do
+# ARITY MATCHES THE DECLARATION. This read had three variables over a
+# four-column table from cd5b90e until now, so `control` silently carried
+# "<control>\t<expires_after>" and the `= "-"` test below could never be true.
+# The rule was dead for five commits and NOTHING SAID SO -- because verify.sh
+# check 8's fixture wrote three fields too. The reader and its own negative
+# control were wrong in the same direction, so they agreed, and agreement was
+# read as correctness. It surfaced only when the fixture was rebuilt at the
+# width ledger/SCHEMA.tsv declares.
+#
+# Arity cannot be checked by reading this file: that is parsing source text to
+# discover structure, which is the bug behind all six census holes. What catches
+# it is a fixture built at the DECLARED width with a negative control per rule,
+# which is now what check 8 is.
+while IFS="$TAB" read -r gid closes control expires; do
     [ -n "${gid:-}" ] || continue
+    # Belt and braces: if a column is ever added and this line is not widened
+    # again, the last variable swallows a tab. That is mechanical and local.
+    case "$control$expires" in
+        *"$TAB"*) err "gate '$gid' has more columns than this reader has variables. Widen it, or the last rule silently stops applying." ;;
+    esac
     cut -f1 "$work/classes" | grep -qxF "$closes" || err "gate '$gid' closes unknown class '$closes'"
     # '-' means nobody looked. 'uncontrolled' means someone did and the answer
     # was no. Only the first is a defect; the second is a counted fact.

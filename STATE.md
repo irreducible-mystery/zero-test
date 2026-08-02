@@ -4,7 +4,7 @@
      Every number below was computed by a command in this run.
      bin/verify.sh regenerates this file and fails if it differs. -->
 
-Generated: 2026-08-02 15:39:30 UTC
+Generated: 2026-08-02 15:45:49 UTC
 Toolchain: Lean (version 4.22.0, x86_64-unknown-linux-gnu, commit ba2cbbf09d4978f416e0ebd1fceeebc2c4138c05, Release)
 
 ## Corpus
@@ -17,7 +17,7 @@ Toolchain: Lean (version 4.22.0, x86_64-unknown-linux-gnu, commit ba2cbbf09d4978
 | Files with forbidden axioms | 0 |
 | `sorry` warnings | 0 |
 | Census exit status | 0 |
-| Census wall clock | 57s |
+| Census wall clock | 14s |
 
 Permitted axioms are exactly `propext`, `Classical.choice`, `Quot.sound`.
 Anything else fails the run. This is an allowlist: an axiom nobody thought to
@@ -76,18 +76,18 @@ below is derived from `ledger/` by that script.
 | | |
 |---|---|
 | Classes | 6 |
-| Recorded sites | 20 |
+| Recorded sites | 24 |
 | Open sites | 6 |
 | Gates | 21 |
-| Gates with no negative control | 0 |
+| Gates with no negative control | 4 |
 
 | class | sites | open | mechanism | search key |
 |---|---|---|---|---|
-| `UNWITNESSED-PASS` | 8 | 1 | mechanized | `grep -nE 'PASS\|exit 0\|exit $fail' bin/*.sh` |
-| `GATE-NAME-OVERCLAIMS` | 4 | 2 | mechanized | `for each gate, compare its printed title to the predicate it evaluates` |
+| `UNWITNESSED-PASS` | 10 | 1 | mechanized | `grep -nE 'PASS\|exit 0\|exit $fail' bin/*.sh` |
+| `GATE-NAME-OVERCLAIMS` | 5 | 2 | mechanized | `for each gate, compare its printed title to the predicate it evaluates` |
 | `UNCHARACTERIZED-COST` | 2 | 1 | mechanized | `grep -nE 'date \+%s\|wall clock\|SECS' bin/*.sh` |
 | `ATTRIBUTION-DRIFT` | 1 | 1 | **unmechanized** | `-` |
-| `SCHEMA-DRIFT` | 3 | 0 | mechanized | `grep -nE "NF *[!=]= *[0-9]\|cut -f[0-9]" bin/*.sh` |
+| `SCHEMA-DRIFT` | 4 | 0 | mechanized | `for t in $(cut -f1 ledger/SCHEMA.tsv \| grep -v "^#"); do echo "$t"; grep -nE "read -r\|NF *[!=]= *[0-9]\|cut -f[0-9]" bin/*.sh; done` |
 | `TRANSLATION-UNRECORDED` | 2 | 1 | mechanized | `grep -rniE "convention\|units\|period\|normalis\|scaled by" *.md question/*.md ledger/*.tsv` |
 
 
@@ -129,7 +129,7 @@ Three kinds, and only two of them are rows.
 | kind | count | what it means |
 |---|---|---|
 | `unknown` | 2 | askable and answerable; the key is the search |
-| `excluded` | 2 | this chart cannot express it; the key names one that can |
+| `excluded` | 4 | this chart cannot express it; the key names one that can |
 | `structural` | refused | a named instance is a category error |
 
 The third kind is not absent from this table by oversight. `bin/absence.sh`
@@ -153,8 +153,8 @@ the thing being checked.
 | Instruments in `bin/` | 12 |
 | Instruments that have appeared as a site | 5 |
 | Never yet the object | 7 |
-| Site rows | 20 |
-| Site rows naming a path | 16 |
+| Site rows | 24 |
+| Site rows naming a path | 20 |
 
 | instrument | times filed as a site | has come round |
 |---|---|---|
@@ -162,14 +162,14 @@ the thing being checked.
 | `bin/atlas.sh` | 0 | **not yet** |
 | `bin/center.sh` | 0 | **not yet** |
 | `bin/check.sh` | 4 | yes |
-| `bin/feedback.sh` | 1 | yes |
+| `bin/feedback.sh` | 2 | yes |
 | `bin/laps.sh` | 0 | **not yet** |
-| `bin/ledger.sh` | 2 | yes |
+| `bin/ledger.sh` | 3 | yes |
 | `bin/perfile.sh` | 0 | **not yet** |
 | `bin/probes.sh` | 0 | **not yet** |
 | `bin/report.sh` | 1 | yes |
 | `bin/schema.sh` | 0 | **not yet** |
-| `bin/verify.sh` | 5 | yes |
+| `bin/verify.sh` | 7 | yes |
 
 
 An instrument that has never been the object is **not clean, it is unexamined**.

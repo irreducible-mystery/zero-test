@@ -15,7 +15,8 @@
 #                                         is a defense that has been removed
 #                                         while the gate reports it active)
 #   3. STATE.md regenerates identically  (no hand-typed numbers can survive)
-#   4. no stray .lean outside lean/ and probes/
+#   4. no .lean escapes the census undeclared -- outside lean/ and probes/ is
+#                                         allowed only if ledger/absences.tsv declares it
 #   5. the per-file table cannot silently shorten (negative control, no toolchain)
 #   6. a probe cannot be swapped for one that fails differently (negative control
 #                                         for check 2 -- planted, not assumed)
@@ -79,9 +80,41 @@ fi
 rm -f "$tmp" /tmp/.a /tmp/.b
 
 echo
-echo "== 4. no stray .lean outside lean/ and probes/ =="
+echo "== 4. no .lean escapes the census undeclared =="
+# A stray .lean is one the census never sees. That is still the rule -- but
+# "never seen" and "seen by nothing that exists here" are different claims, and
+# collapsing them is what made this check red for three commits.
+#
+# question/evidence/*.lean are the artifacts a pre-registration cites. They
+# import Mathlib, so the core toolchain in this tree cannot elaborate them.
+# Deleting them recreates the unreachable-artifact defect this project
+# adjudicated in someone else's work and then committed in its own. Leaving them
+# undeclared makes the census silently incomplete.
+#
+# So: a stray is permitted IF AND ONLY IF ledger/absences.tsv declares it
+# `excluded` and names the representation that would express it. That is the
+# absence registry doing work rather than decorating a document -- the gap is
+# counted, attributed, and carries its own path to closure. An undeclared stray
+# still turns this red.
 stray=$(find . -name '*.lean' -not -path './lean/*' -not -path './probes/*' -not -path './.git/*')
-if [ -z "$stray" ]; then echo "   PASS"; else echo "$stray" | sed 's/^/   FAIL: stray /'; fail=1; fi
+undeclared=''; declared=0
+for f in $stray; do
+    rel=${f#./}
+    if grep -vE '^[[:space:]]*(#|$)' ledger/absences.tsv \
+       | awk -F"$(printf '\t')" -v p="$rel" '$2=="excluded" && $3==p{f=1} END{exit !f}'; then
+        declared=$((declared+1))
+    else
+        undeclared="$undeclared $rel"
+    fi
+done
+if [ -n "$undeclared" ]; then
+    for u in $undeclared; do echo "   FAIL: stray $u -- outside the census and not declared in ledger/absences.tsv"; done
+    fail=1
+elif [ "$declared" -gt 0 ]; then
+    echo "   PASS: no undeclared strays ($declared outside the census, each filed as an excluded absence)"
+else
+    echo "   PASS"
+fi
 
 echo
 echo "== 5. the per-file table cannot silently shorten (negative control) =="
