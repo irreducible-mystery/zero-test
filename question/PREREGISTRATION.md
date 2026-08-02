@@ -136,3 +136,83 @@ wrong convention immediately. Site filed; the defect is the author's.
   entirely to `a > 1/4`.
 - An independent recomputation disagreeing with the `(0, 1/4)` range →
   **everything above is void**, including the falsification of the golden claim.
+
+---
+
+# AMENDMENT — filed after two independent reports, before adjudicating either
+
+**Do not edit anything above this line.** The pre-registration stands as filed,
+errors included. This section records what the reports established.
+
+## 1. The evidence was not reachable. That is my defect and it is the worst one.
+
+The prediction above cites `Cone.lean`, `GeneralCeiling.lean`, `const_attains`,
+`gap_neg_one_cube` and `gap/README.md` as kernel-proved support. **None of them
+existed in any repository a reader of this document could reach.** They were in
+a sibling repo strangers have no access to.
+
+Both reporters independently searched the full history of two repositories to
+establish absence. That effort was caused entirely by me.
+
+This is **exactly** the defect I adjudicated against another party's document
+weeks-equivalent ago: a claim resting on Lean files that are named but not
+present. I wrote the adjudication and then committed the identical thing.
+
+**Fixed:** the four files are now in `question/evidence/`, and every cited name
+resolves:
+
+    const_attains, run_le_bound          -> evidence/GeneralCeiling.lean
+    cone_exists_iff,
+      admissible_iff_between_roots       -> evidence/Cone.lean
+    gap_neg_one_cube                     -> evidence/Modulus.lean
+    the published rotation figures       -> evidence/gap-README.md, line 52
+
+The figures, verbatim, so the convention question rests on the text and not on
+my quotation of it:
+
+> *"below, every gap has a **rotation number** — period 3 at G = −1, 4 at −1/2,
+> 6 at −1/3, all verified"*
+
+## 2. My "defect" was not a defect. Retracted.
+
+I filed a site against `gap/README.md` claiming its rotation figures were wrong
+by a factor of two. A reporter showed `T(−1)³ = −I` **exactly**, as a matrix
+identity — so the map has order **3 on `RP¹`** and order **6 on `ℝ²`**. The
+sibling publishes projective periods; I reported `arg(s₊)/2π`. Both are correct
+and the Lean is consistent with both.
+
+Worse, my correction was **over-general**: halving is the `±1` quotient and
+needs an even denominator. At `rot = 1/5` the projective period is 5, not 5/2.
+
+**A convention difference was reported as an error, and the correction was
+wrong.** Retracted. The reporter's `CONVENTION-CALLED-DEFECT` and
+`SCOPE-OVERGENERAL` rows stand against me.
+
+## 3. Two things the reports found that I did not
+
+- **The range is provable in one line, not merely computed.** `tr T(G) = 1` for
+  every `G`, so `Re(s₊) = 1/2` identically and `arg(s₊) ∈ (0, π/2)` strictly.
+  I marked it "computed, not proved." That is `STATUS-UNDERCLAIMS` — claiming
+  less than the evidence supports — and it is a class this ledger did not have.
+- **φ *is* in this family, in the rational rotation numbers.**
+  `rot = 1/5` iff `G = −φ²` exactly; `rot = 1/10` iff `G = −1/φ²` exactly. Both
+  degree 2, both provable, from `cos(2π/5)` and `cos(π/5)`. **I searched for
+  irrational golden and missed the exact cases.** The question as I framed it
+  looked past the only place φ actually appears.
+
+## 4. Structural defects in how I set this up
+
+- **Filing requires a toolchain the question does not.** Appending to
+  `sites.tsv` runs `ledger.sh` → `report.sh` → `check.sh`, which needs Lean.
+  A pure-arithmetic finding cannot be filed without a 400 MB install.
+- **The prompt said "file in `sites.tsv`" but the schema needs two files.**
+  A new `class_id` must resolve against `classes.tsv`. Five new classes were
+  filed with no registry entry, exactly as instructed, leaving a gap the
+  instruction created.
+- **Honest filing turns the build red and I never said what to do about it.**
+  One reporter deliberately let `ATTRIBUTION-DRIFT` reach the escalation
+  threshold rather than soften a row. Correct behaviour, and it blocks a merge
+  with no documented path.
+- **I assigned two producers and zero confirmers.** Both are correctly barred
+  from certifying their own work, so **nothing filed can ever be closed.**
+  The system as I built it has no exit.
