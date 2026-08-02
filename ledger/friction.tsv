@@ -22,3 +22,4 @@
 # kind, or wrong field count fails the build.
 verify:3	bin/verify.sh:60	unclear-verdict
 check:a	bin/check.sh:65	cost
+verify:7	bin/verify.sh:37	bypassed
