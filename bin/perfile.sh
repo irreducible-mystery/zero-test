@@ -1,4 +1,6 @@
 #!/bin/sh
+
+[ "${1:-}" = "--scope" ] && { echo "DOMAIN|perfile|every *.lean in the named directory, and every PERFILE record in the census"; exit 0; }
 # perfile.sh — build the per-file table from the FILE LIST, not from prose.
 #
 #   usage: perfile.sh <lean-dir> <census-output-file>

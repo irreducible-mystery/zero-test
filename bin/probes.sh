@@ -1,4 +1,6 @@
 #!/bin/sh
+
+[ "${1:-}" = "--scope" ] && { echo "DOMAIN|probes|every *.lean and *.expect in the named probe directory"; exit 0; }
 # probes.sh — run every negative control and check WHY it failed, not that it did.
 #
 #   usage: probes.sh <probes-dir>

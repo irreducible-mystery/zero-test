@@ -1,0 +1,37 @@
+# absence_id	kind	site	key
+#
+# TWO OF THE THREE ABSENCES. THE THIRD IS NOT IN THIS FILE AND CANNOT BE.
+#
+# kind is one of, and 'structural' is REFUSED BY bin/absence.sh ON PURPOSE:
+#
+#   unknown    Currently unknown. Askable, answerable, and the key is a search
+#              that would answer it. A bigger computer or more time helps.
+#
+#   excluded   Excluded by the current representation. The object exists and
+#              this chart cannot express it; another chart can. The key names
+#              the representation that would. The gap is in the medium, not the
+#              world.
+#
+#   structural Structurally unavailable from inside. REFUSED. A named instance
+#              of this kind is a category error, and a registry of them is a
+#              registry of the ones we happened to find -- which is the exact
+#              shape of the five regexes that each closed the hole they could
+#              see. Every one of the six holes in bin/check.sh was a filter
+#              invisible in its own output. None of them could have been a row
+#              here before it was found, and after it was found it stopped
+#              being this kind.
+#
+#              What this kind gets instead is a COUNT OF THE COMPLEMENT. The
+#              census does not name what it excluded; it reports how many
+#              things it excluded, and a disagreement between that number and
+#              the number that arrived is visible from inside. See the SCOPE
+#              gate in bin/check.sh and the registration sweep in bin/center.sh.
+#
+#              The center is un-fillable but measurable. Count the complement,
+#              never name it.
+a:extremal	unknown	question/PREREGISTRATION.md	sweep all Sturmian words of denominator <= N for a unique maximizer
+a:cone	excluded	question/evidence/Cone.lean	bin/check.sh run against a Mathlib toolchain: the file cannot witness its own axiom-freedom
+a:rotation	unknown	ledger/sites.tsv	git log -p ledger/sites.tsv, then gaps between successive filings of one class
+a:emptydir	excluded	center/	a storage medium that can represent an empty directory: git cannot, so center/EMPTY exists and is 0 bytes
+a:modulus	excluded	question/evidence/Modulus.lean	bin/check.sh run against a Mathlib toolchain: it imports Mathlib and the core census cannot elaborate it
+a:ceiling	excluded	question/evidence/GeneralCeiling.lean	bin/check.sh run against a Mathlib toolchain: it imports Mathlib and the core census cannot elaborate it

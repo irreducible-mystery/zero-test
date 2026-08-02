@@ -1,4 +1,6 @@
 #!/bin/sh
+
+[ "${1:-}" = "--scope" ] && { echo "DOMAIN|feedback|every row of friction.tsv and events.tsv, and every gate they name"; exit 0; }
 # feedback.sh — the DOWNWARD arrow, and the only flow that shrinks |G|.
 #
 # sites.tsv reports defects in the corpus and pushes mechanisms UP.
@@ -50,7 +52,7 @@ done || fail=1
 # terminal: an explicit claim that this gate should outlive evidence, visible in
 # a diff and counted. `-` means nobody decided, and that fails.
 echo "  -- expiry (a gate earns its life by catching) --"
-HEADN=$(git rev-list --count HEAD 2>/dev/null || echo 0)
+REPO=$(git -C "$(dirname "$0")" rev-parse --show-toplevel 2>/dev/null || echo "")
 
 # yield, per gate. computed, never typed.
 for g in $GATES; do
@@ -67,15 +69,34 @@ for g in $GATES; do
     # version of this block committed it: the lookup failed in a temp tree, age
     # became 0, `0 > 0` was false, and a gate with zero catches and
     # expires_after=0 reported healthy. Unknown must refuse, not pass.
+    # THE LOOKUP IS ANCHORED AT THE REPO, not at whatever ledger directory this
+    # was handed. It used to read
+    #     git -C "$(dirname "$L")" ... -- "$(basename "$L")/gates.tsv"
+    # which made a gate's age a property of WHERE THE FILE HAD BEEN COPIED. Copy
+    # the ledger into a temp directory -- which is exactly what verify.sh check
+    # 10 does -- and every gate with a numeric expires_after became unresolvable
+    # and aborted, so the control for this entire downward arrow never reached
+    # the threshold it is named after. Its first leg reported PASS because
+    # something had been refused, and the thing refused was the age lookup.
+    #
+    # An unwitnessed pass inside the control for the only flow that makes |G| go
+    # down. Found by adding checks 11-16, not by auditing this file.
+    #
+    # Age is a fact about the project's history, so it is read from there.
     age=0
     if [ "$exp" != "never" ]; then
-        born=$(git -C "$(dirname "$L")" log --format=%H -S"$g" -- "$(basename "$L")/gates.tsv" 2>/dev/null | tail -1)
-        if [ -z "$born" ]; then
-            echo "  ABORT: cannot determine age of '$g' from git. An unknown age is not"
-            echo "         age zero. Run from a checkout, or declare expires_after=never."
+        if [ -z "$REPO" ]; then
+            echo "  ABORT: not inside a git checkout, so no gate age is knowable."
+            echo "         An unknown age is not age zero. Declare expires_after=never."
             fail=1; continue
         fi
-        age=$(git -C "$(dirname "$L")" rev-list --count "$born"..HEAD 2>/dev/null) || age=""
+        born=$(git -C "$REPO" log --format=%H -S"$g" -- ledger/gates.tsv 2>/dev/null | tail -1)
+        if [ -z "$born" ]; then
+            echo "  ABORT: cannot determine age of '$g' from git. An unknown age is not"
+            echo "         age zero. Commit the gate row, or declare expires_after=never."
+            fail=1; continue
+        fi
+        age=$(git -C "$REPO" rev-list --count "$born"..HEAD 2>/dev/null) || age=""
         [ -n "$age" ] || { echo "  ABORT: age of '$g' unresolvable"; fail=1; continue; }
     fi
 

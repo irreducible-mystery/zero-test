@@ -1,7 +1,12 @@
 #!/bin/sh
+
+[ "${1:-}" = "--scope" ] && exit 3   # runs other instruments; enumerates nothing itself
 # verify.sh — the gate. Run this; it is the whole contract.
 #
-# Four things must hold. Any one failing exits non-zero.
+# Every check below must hold. Any one failing exits non-zero. The list is not
+# repeated here as a count: this header said "Four things" above six numbered
+# items for three commits, which is GATE-NAME-OVERCLAIMS in the file that
+# defines it. Read the `== n.` lines; they are the enumeration.
 #
 #   1. the corpus passes the census      (positive control)
 #   2. EVERY probe fails FOR ITS DECLARED REASON  (negative control -- a passing
@@ -10,7 +15,8 @@
 #                                         is a defense that has been removed
 #                                         while the gate reports it active)
 #   3. STATE.md regenerates identically  (no hand-typed numbers can survive)
-#   4. no stray .lean outside lean/ and probes/
+#   4. no .lean escapes the census undeclared -- outside lean/ and probes/ is
+#                                         allowed only if ledger/absences.tsv declares it
 #   5. the per-file table cannot silently shorten (negative control, no toolchain)
 #   6. a probe cannot be swapped for one that fails differently (negative control
 #                                         for check 2 -- planted, not assumed)
@@ -74,9 +80,41 @@ fi
 rm -f "$tmp" /tmp/.a /tmp/.b
 
 echo
-echo "== 4. no stray .lean outside lean/ and probes/ =="
+echo "== 4. no .lean escapes the census undeclared =="
+# A stray .lean is one the census never sees. That is still the rule -- but
+# "never seen" and "seen by nothing that exists here" are different claims, and
+# collapsing them is what made this check red for three commits.
+#
+# question/evidence/*.lean are the artifacts a pre-registration cites. They
+# import Mathlib, so the core toolchain in this tree cannot elaborate them.
+# Deleting them recreates the unreachable-artifact defect this project
+# adjudicated in someone else's work and then committed in its own. Leaving them
+# undeclared makes the census silently incomplete.
+#
+# So: a stray is permitted IF AND ONLY IF ledger/absences.tsv declares it
+# `excluded` and names the representation that would express it. That is the
+# absence registry doing work rather than decorating a document -- the gap is
+# counted, attributed, and carries its own path to closure. An undeclared stray
+# still turns this red.
 stray=$(find . -name '*.lean' -not -path './lean/*' -not -path './probes/*' -not -path './.git/*')
-if [ -z "$stray" ]; then echo "   PASS"; else echo "$stray" | sed 's/^/   FAIL: stray /'; fail=1; fi
+undeclared=''; declared=0
+for f in $stray; do
+    rel=${f#./}
+    if grep -vE '^[[:space:]]*(#|$)' ledger/absences.tsv \
+       | awk -F"$(printf '\t')" -v p="$rel" '$2=="excluded" && $3==p{f=1} END{exit !f}'; then
+        declared=$((declared+1))
+    else
+        undeclared="$undeclared $rel"
+    fi
+done
+if [ -n "$undeclared" ]; then
+    for u in $undeclared; do echo "   FAIL: stray $u -- outside the census and not declared in ledger/absences.tsv"; done
+    fail=1
+elif [ "$declared" -gt 0 ]; then
+    echo "   PASS: no undeclared strays ($declared outside the census, each filed as an excluded absence)"
+else
+    echo "   PASS"
+fi
 
 echo
 echo "== 5. the per-file table cannot silently shorten (negative control) =="
@@ -185,18 +223,42 @@ echo "== 8. the ledger gate cannot be satisfied vacuously (negative control) =="
 # the ledger FAILURES.md again -- prose that cannot be thresholded, which is the
 # thing it exists to replace. Needs no toolchain.
 ld=$(mktemp -d); TAB=$(printf '\t')
+# The fixture directory is a COPY of the real ledger with three tables
+# overwritten. It used to be three files and nothing else, which stopped being
+# viable the moment ledger.sh delegated its shape assertion to bin/schema.sh:
+# schema validates every DECLARED table, so a directory holding three of eight
+# fails for a reason that has nothing to do with any case below.
+cp ledger/*.tsv "$ld/"
 l_case() {  # <label> <accept|reject>
     sh bin/ledger.sh "$ld" >/dev/null 2>&1; rc=$?
     if [ "$2" = "reject" ] && [ "$rc" -eq 0 ]; then echo "   FAIL: $1 -- ACCEPTED"; fail=1
     elif [ "$2" = "accept" ] && [ "$rc" -ne 0 ]; then echo "   FAIL: $1 -- rejected a valid ledger (exit $rc)"; fail=1
     else echo "   PASS: $1"; fi
 }
-mkclasses() { printf "%s\n" "$1" > "$ld/classes.tsv"; }
-mksites()   { printf "%s\n" "$1" > "$ld/sites.tsv"; }
-mkgates()   { printf "%s\n" "$1" > "$ld/gates.tsv"; }
+# Headers copied from the real tables rather than retyped. A retyped header is
+# one more place the schema is written down, which is the class this change
+# exists to close.
+mkclasses() { head -1 ledger/classes.tsv > "$ld/classes.tsv"; printf "%s\n" "$1" >> "$ld/classes.tsv"; }
+mksites()   { head -1 ledger/sites.tsv   > "$ld/sites.tsv";   printf "%s\n" "$1" >> "$ld/sites.tsv"; }
+mkgates()   { head -1 ledger/gates.tsv   > "$ld/gates.tsv";   printf "%s\n" "$1" >> "$ld/gates.tsv"; }
 VALID_C="AAA${TAB}a machine${TAB}grep aaa"
 VALID_S="AAA${TAB}some/file.sh${TAB}open"
-VALID_G="g:1${TAB}AAA${TAB}a control"
+VALID_G="g:1${TAB}AAA${TAB}a control${TAB}never"
+
+# THE FIXTURES ARE CHECKED AGAINST THE DECLARATION, not assumed to match it.
+# gates.tsv grew a fourth column; these fixtures went on writing three fields,
+# so the fix to ledger.sh broke the POSITIVE control right here and this whole
+# check went red for a reason unrelated to anything it tests. A future column
+# change now fails at this line, by name.
+for t in classes:C sites:S gates:G; do
+    tbl=${t%:*}; var=${t#*:}
+    eval "fx=\$VALID_$var"
+    want=$(sh bin/schema.sh ledger --cols "$tbl.tsv") \
+        || { echo "   FAIL: SCHEMA.tsv has no row for $tbl.tsv"; fail=1; continue; }
+    got=$(printf '%s' "$fx" | awk -F"$TAB" '{print NF}')
+    [ "$want" = "$got" ] \
+        || { echo "   FAIL: $tbl.tsv fixture writes $got fields, SCHEMA.tsv declares $want"; fail=1; }
+done
 
 mkclasses "$VALID_C"; mksites "$VALID_S"; mkgates "$VALID_G"
 l_case "a valid ledger is accepted (positive control)" accept
@@ -222,10 +284,10 @@ mkclasses "AAA${TAB}a machine${TAB}grep aaa${TAB}extra"
 l_case "a row with the wrong number of fields is refused" reject
 mkclasses "$VALID_C"
 
-mkgates "g:1${TAB}AAA${TAB}-"
+mkgates "g:1${TAB}AAA${TAB}-${TAB}never"
 l_case "a gate declaring no control is refused" reject
 
-mkgates "g:1${TAB}ZZZ${TAB}a control"
+mkgates "g:1${TAB}ZZZ${TAB}a control${TAB}never"
 l_case "a gate closing an unknown class is refused" reject
 mkgates "$VALID_G"
 
@@ -257,22 +319,280 @@ echo
 echo "== 10. the deletion threshold fires, and only when it should (negative control) =="
 # A threshold that never fires is decoration; one that always fires is a ban.
 # Both are the same defect as a gate whose name overclaims, one level up.
+#
+# THE GATE UNDER TEST IS SYNTHETIC, NOT BORROWED. This used to pick the first
+# control-only gate out of the real events.tsv, which happened to be one with a
+# numeric expires_after -- and feedback.sh derived gate age from the directory
+# it was handed, so in a temp copy every such gate aborted on an unresolvable
+# age BEFORE the threshold was ever evaluated. Leg one printed PASS because
+# something had been refused; the thing refused was the age lookup. Leg two
+# failed for the same reason and said "that is a ban", which it was not.
+#
+# A borrowed fixture also makes this control depend on which real gate happens
+# to be control-only today. It declares its own.
 fd=$(mktemp -d); cp ledger/*.tsv "$fd/"
-quiet=$(grep -v '^#' ledger/events.tsv | grep -v '^[[:space:]]*$' | awk -F'\t' '$2=="control-only"{print $1; exit}')
-if [ -z "$quiet" ]; then
-    echo "   FAIL: no control-only gate to test the threshold against"; fail=1
+probe='zz:probe'
+cp ledger/gates.tsv "$fd/gates.base"
+printf '%s\tUNWITNESSED-PASS\ta control\tnever\n' "$probe" >> "$fd/gates.base"
+cp "$fd/gates.base" "$fd/gates.tsv"
+
+printf '%s\tprobe\tcost\n%s\tprobe\tblocked\n' "$probe" "$probe" >> "$fd/friction.tsv"
+if sh bin/feedback.sh "$fd" >/dev/null 2>&1; then
+    echo "   FAIL: threshold did not fire at 2 friction reports"; fail=1
 else
-    printf '%s\tprobe\tcost\n%s\tprobe\tblocked\n' "$quiet" "$quiet" >> "$fd/friction.tsv"
-    sh bin/feedback.sh "$fd" >/dev/null 2>&1
-    if [ $? -ne 0 ]; then echo "   PASS: 2 friction + 0 field-catches is refused ($quiet)"
-    else echo "   FAIL: threshold did not fire at 2 friction reports"; fail=1; fi
-    cp ledger/*.tsv "$fd/"
-    printf '%s\tprobe\tcost\n' "$quiet" >> "$fd/friction.tsv"
-    sh bin/feedback.sh "$fd" >/dev/null 2>&1
-    if [ $? -eq 0 ]; then echo "   PASS: 1 friction report alone does not condemn a gate"
-    else echo "   FAIL: threshold fired at 1 -- that is a ban, not a threshold"; fail=1; fi
+    echo "   PASS: 2 friction + 0 field-catches is refused ($probe)"
+fi
+
+cp ledger/friction.tsv "$fd/friction.tsv"
+printf '%s\tprobe\tcost\n' "$probe" >> "$fd/friction.tsv"
+if sh bin/feedback.sh "$fd" >/dev/null 2>&1; then
+    echo "   PASS: 1 friction report alone does not condemn a gate"
+else
+    echo "   FAIL: threshold fired at 1 -- that is a ban, not a threshold"
+    sh bin/feedback.sh "$fd" 2>&1 | grep -E 'ABORT|CANDIDATE|EXPIRED' | sed 's/^/         /'
+    fail=1
+fi
+
+# ...and the third leg, which is what the two above were silently skipping: a
+# gate that HAS a field-catch survives its friction. Without it, "refused" and
+# "refused for the right reason" are the same bit again.
+cp ledger/friction.tsv "$fd/friction.tsv"
+printf '%s\tprobe\tcost\n%s\tprobe\tblocked\n' "$probe" "$probe" >> "$fd/friction.tsv"
+printf '%s\tfield-catch\n' "$probe" >> "$fd/events.tsv"
+if sh bin/feedback.sh "$fd" >/dev/null 2>&1; then
+    echo "   PASS: a gate with a field-catch survives 2 friction reports"
+else
+    echo "   FAIL: a gate that caught something real was condemned anyway"; fail=1
 fi
 rm -rf "$fd"
+
+echo
+echo "== 11. the atlas, the absences, the laps and the center all hold =="
+# The positive controls for 12-16. None of these needs a toolchain, which is
+# deliberate: the round trip in particular is the only check in this repository
+# that requires no kernel, no adjudicator and no trusted party. It resolves to
+# "close the loop", not to "run it and see".
+for m in "schema:sh bin/schema.sh ledger" \
+         "atlas:sh bin/atlas.sh ledger" \
+         "absence:sh bin/absence.sh ledger" \
+         "laps:sh bin/laps.sh $ROOT" \
+         "center:sh bin/center.sh $ROOT"; do
+    nm=${m%%:*}; cmd=${m#*:}
+    out=$($cmd 2>&1); rc=$?
+    if [ "$rc" -ne 0 ]; then
+        echo "   FAIL: $nm"; printf '%s\n' "$out" | sed 's/^/          /'; fail=1; continue
+    fi
+    # Every one of these must report its own complement. An instrument exempt
+    # from the rule it enforces is hole 6 wearing a job title.
+    sc=$(printf '%s\n' "$out" | grep "^SCOPE|$nm|" | head -1)
+    if [ -z "$sc" ]; then
+        echo "   FAIL: $nm passed without emitting a SCOPE line -- no manifest, no verdict"; fail=1
+    else
+        s=$(printf '%s' "$sc" | cut -d'|' -f3); a=$(printf '%s' "$sc" | cut -d'|' -f4)
+        if [ "$s" != "$a" ]; then
+            echo "   FAIL: $nm saw $s and considered $a -- something is filtering"; fail=1
+        else
+            echo "   PASS: $nm ($s seen, $a considered)"
+        fi
+    fi
+done
+
+echo
+echo "== 12. the schema declaration cannot be satisfied vacuously (negative control) =="
+# The control for the mechanism that closes SCHEMA-DRIFT. A schema validator
+# that accepted anything would put the widths back in four places while
+# reporting that they were in one.
+sd=$(mktemp -d); TAB=$(printf '\t')
+s_case() { # <label> <accept|reject>
+    sh bin/schema.sh "$sd" >/dev/null 2>&1; rc=$?
+    if [ "$2" = "reject" ] && [ "$rc" -eq 0 ]; then echo "   FAIL: $1 -- ACCEPTED"; fail=1
+    elif [ "$2" = "accept" ] && [ "$rc" -ne 0 ]; then echo "   FAIL: $1 -- rejected a valid schema (exit $rc)"; fail=1
+    else echo "   PASS: $1"; fi
+}
+cp ledger/*.tsv "$sd/"
+s_case "the real ledger validates (positive control)" accept
+
+# (a) THE ORIGINAL DEFECT: a row narrower than its declaration.
+cp ledger/gates.tsv "$sd/gates.tsv"
+printf 'g:x%sUNWITNESSED-PASS%sa control\n' "$TAB" "$TAB" >> "$sd/gates.tsv"
+s_case "a gates row at the pre-expansion width is refused" reject
+cp ledger/gates.tsv "$sd/gates.tsv"
+
+# (b) THE FOURTH SITE: a header comment that disagrees with the declaration.
+#     This is the one nothing was checking, in the file that declares widths.
+{ printf '# gate_id%scloses%scontrol\n' "$TAB" "$TAB"; tail -n +2 ledger/gates.tsv; } > "$sd/gates.tsv"
+s_case "a header naming fewer columns than the schema is refused" reject
+cp ledger/gates.tsv "$sd/gates.tsv"
+
+# (c) THE COMPLEMENT: a table nobody declared. A registry that validates only
+#     what it lists cannot see what it omitted -- hole 6's exact shape.
+cp ledger/sites.tsv "$sd/undeclared.tsv"
+s_case "a .tsv with no SCHEMA row is refused" reject
+rm -f "$sd/undeclared.tsv"
+
+# (d) the other direction: a declaration with no file.
+printf 'ghost.tsv%s3%sa,b,c\n' "$TAB" "$TAB" >> "$sd/SCHEMA.tsv"
+s_case "a SCHEMA row with no table is refused" reject
+cp ledger/SCHEMA.tsv "$sd/SCHEMA.tsv"
+
+# (e) an empty table is not a clean table -- five vacuous passes ago.
+head -1 ledger/absences.tsv > "$sd/absences.tsv"
+s_case "a declared table with no data rows is refused" reject
+rm -rf "$sd"
+
+echo
+echo "== 13. a translation whose round trip does not close is refused (negative control) =="
+# The control for atlas:roundtrip. THIS IS THE CHECK THAT NEEDS NO AUTHORITY:
+# every case below is decided without knowing which side is correct.
+ad=$(mktemp -d); mkdir -p "$ad/ledger"; cp ledger/*.tsv "$ad/ledger/"
+ln -sf "$ROOT/bin" "$ad/bin" 2>/dev/null || cp -r bin "$ad/bin"
+a_case() { # <label> <accept|reject>
+    sh bin/atlas.sh "$ad/ledger" >/dev/null 2>&1; rc=$?
+    if [ "$2" = "reject" ] && [ "$rc" -eq 0 ]; then echo "   FAIL: $1 -- ACCEPTED"; fail=1
+    elif [ "$2" = "accept" ] && [ "$rc" -ne 0 ]; then echo "   FAIL: $1 -- rejected a valid atlas (exit $rc)"; fail=1
+    else echo "   PASS: $1"; fi
+}
+mkx() { cp ledger/translations.tsv "$ad/ledger/translations.tsv"; [ -n "${1:-}" ] && printf '%s\n' "$1" >> "$ad/ledger/translations.tsv"; return 0; }
+mkx ""
+a_case "the real atlas validates (positive control)" accept
+
+# (a) THE ONE THAT MATTERS. Forward doubles, back does nothing. Nobody has to
+#     know which convention is right to see that the loop does not close.
+mkx "x:bad${TAB}chart A${TAB}chart B${TAB}the orbit${TAB}nothing${TAB}roundtrip${TAB}2*x|x|3"
+a_case "a round trip that does not close is refused, with no adjudicator" reject
+
+# (b) a translation that claims a witness nobody can reach. This is the defect
+#     this project adjudicated in someone else's work and then committed.
+mkx "x:ghost${TAB}chart A${TAB}chart B${TAB}the orbit${TAB}nothing${TAB}witness${TAB}does/not/exist.md"
+a_case "a witness path that does not exist is refused" reject
+
+# (c) '-' is not a method. Two legal answers and nobody-looked is not one.
+mkx "x:dash${TAB}chart A${TAB}chart B${TAB}-${TAB}nothing${TAB}witness${TAB}bin/check.sh"
+a_case "a '-' field is refused" reject
+
+# (d) a chart translated to itself is not a transition map.
+mkx "x:self${TAB}chart A${TAB}chart A${TAB}everything${TAB}nothing${TAB}witness${TAB}bin/check.sh"
+a_case "a translation from a chart to itself is refused" reject
+
+# (e) an unknown method.
+mkx "x:vibes${TAB}chart A${TAB}chart B${TAB}the orbit${TAB}nothing${TAB}careful-review${TAB}bin/check.sh"
+a_case "a method outside {roundtrip, witness} is refused" reject
+
+# (f) positive control for the round trip itself: a translation that DOES close
+#     must still be accepted, or (a) proves only that the parser is broken.
+mkx "x:good${TAB}chart A${TAB}chart B${TAB}the orbit${TAB}nothing${TAB}roundtrip${TAB}3*x+1|(x-1)/3|5"
+a_case "a round trip that closes is accepted" accept
+rm -rf "$ad"
+
+echo
+echo "== 14. the third absence cannot be filed as a row (negative control) =="
+# The control for absence:kind. A registry of structural absences is a registry
+# of the ones we happened to find, which is the shape of all five regexes.
+bd=$(mktemp -d); mkdir -p "$bd/ledger"; cp ledger/*.tsv "$bd/ledger/"
+b_case() { # <label> <accept|reject>
+    sh bin/absence.sh "$bd/ledger" >/dev/null 2>&1; rc=$?
+    if [ "$2" = "reject" ] && [ "$rc" -eq 0 ]; then echo "   FAIL: $1 -- ACCEPTED"; fail=1
+    elif [ "$2" = "accept" ] && [ "$rc" -ne 0 ]; then echo "   FAIL: $1 -- rejected a valid table (exit $rc)"; fail=1
+    else echo "   PASS: $1"; fi
+}
+mka() { cp ledger/absences.tsv "$bd/ledger/absences.tsv"; [ -n "${1:-}" ] && printf '%s\n' "$1" >> "$bd/ledger/absences.tsv"; return 0; }
+mka ""
+b_case "the real absence table validates (positive control)" accept
+
+# (a) THE ONE THAT MATTERS. Naming the center fills it, and filling it needs
+#     another hole. Every one of the six holes was invisible in its own output;
+#     none could have been a row here before it was found.
+mka "a:center${TAB}structural${TAB}center/${TAB}the part of the system unavailable from inside it"
+b_case "kind=structural is refused -- the center is counted, never enumerated" reject
+
+# (b) a key that restates its site answers nothing.
+mka "a:lazy${TAB}unknown${TAB}bin/check.sh${TAB}bin/check.sh"
+b_case "a key that restates its site is refused" reject
+
+# (c) an absence filed against nothing.
+mka "a:nowhere${TAB}unknown${TAB}does/not/exist.md${TAB}go and look"
+b_case "an absence whose site does not exist is refused" reject
+
+# (d) an invented kind.
+mka "a:vibes${TAB}ineffable${TAB}bin/check.sh${TAB}sit quietly"
+b_case "a kind outside {unknown, excluded} is refused" reject
+
+# (e) positive control: both legal kinds must still be accepted.
+mka "a:ok${TAB}excluded${TAB}bin/check.sh${TAB}a Mathlib toolchain would express it"
+b_case "a well-formed excluded absence is accepted" accept
+rm -rf "$bd"
+
+echo
+echo "== 15. a site naming a path that does not exist is refused (negative control) =="
+# The control for laps:site-exists. Recurrence counts drive escalation, and a
+# count of ghosts escalates nothing.
+kd=$(mktemp -d); mkdir -p "$kd/bin" "$kd/ledger"
+cp bin/laps.sh "$kd/bin/"; cp ledger/sites.tsv "$kd/ledger/"
+: > "$kd/bin/real.sh"
+if sh bin/laps.sh "$kd" >/dev/null 2>&1; then
+    echo "   FAIL: sites naming bin/check.sh accepted in a tree that has no bin/check.sh"; fail=1
+else
+    echo "   PASS: a site naming a path that does not exist is refused"
+fi
+# ...and the positive control, or the above proves only that laps.sh always fails.
+head -1 ledger/sites.tsv > "$kd/ledger/sites.tsv"
+printf 'UNWITNESSED-PASS%sbin/real.sh something%sopen\n' "$TAB" "$TAB" >> "$kd/ledger/sites.tsv"
+if sh bin/laps.sh "$kd" >/dev/null 2>&1; then
+    echo "   PASS: a site naming a path that exists is accepted"
+else
+    echo "   FAIL: laps.sh rejected a site whose path is present"; fail=1
+fi
+rm -rf "$kd"
+
+echo
+echo "== 16. an unregistered instrument turns the build red (negative control) =="
+# The control for center:register and center:empty. This is bin/check.sh's SCOPE
+# gate one level up: the sweep does not get smarter, the enumeration is the
+# filesystem, and the complement is printed.
+cd_=$(mktemp -d); mkdir -p "$cd_/bin" "$cd_/center"
+cp bin/schema.sh "$cd_/bin/"; : > "$cd_/center/EMPTY"
+if sh bin/center.sh "$cd_" >/dev/null 2>&1; then
+    echo "   PASS: a tree whose instruments all register is accepted (positive control)"
+else
+    echo "   FAIL: center.sh rejected a tree in which every instrument registers"; fail=1
+fi
+
+# (a) THE ATTACK: an instrument that answers --scope with neither a domain nor
+#     a declaration that it has none. This is how the last six got in.
+printf '#!/bin/sh\necho hello\n' > "$cd_/bin/rogue.sh"
+if sh bin/center.sh "$cd_" >/dev/null 2>&1; then
+    echo "   FAIL: an instrument that does not answer --scope was ACCEPTED"; fail=1
+else
+    echo "   PASS: an unregistered instrument is refused"
+fi
+rm -f "$cd_/bin/rogue.sh"
+
+# (b) an instrument that exits 0 and says nothing -- silence read as consent.
+printf '#!/bin/sh\nexit 0\n' > "$cd_/bin/mute.sh"
+if sh bin/center.sh "$cd_" >/dev/null 2>&1; then
+    echo "   FAIL: an instrument answering --scope with silence and exit 0 was ACCEPTED"; fail=1
+else
+    echo "   PASS: silence with exit 0 is not a registration"
+fi
+rm -f "$cd_/bin/mute.sh"
+
+# (c) the center is not storage.
+printf 'notes\n' > "$cd_/center/EMPTY"
+if sh bin/center.sh "$cd_" >/dev/null 2>&1; then
+    echo "   FAIL: a center with contents was ACCEPTED"; fail=1
+else
+    echo "   PASS: anything written into the center turns the build red"
+fi
+: > "$cd_/center/EMPTY"
+
+# (d) and something else left in there entirely.
+: > "$cd_/center/notes.md"
+if sh bin/center.sh "$cd_" >/dev/null 2>&1; then
+    echo "   FAIL: an extra file in center/ was ACCEPTED"; fail=1
+else
+    echo "   PASS: an extra file in the center turns the build red"
+fi
+rm -rf "$cd_"
 
 echo
 if [ "$fail" -eq 0 ]; then echo "ALL GATES PASS"; else echo "GATES FAILED"; fi

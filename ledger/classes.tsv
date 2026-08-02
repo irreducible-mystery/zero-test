@@ -10,3 +10,5 @@ UNWITNESSED-PASS	every gate emits (verdict, manifest); the manifest is the enume
 GATE-NAME-OVERCLAIMS	a gate's printed title is derived from its manifest rather than written beside it	for each gate, compare its printed title to the predicate it evaluates
 UNCHARACTERIZED-COST	machine-dependent quantities are stripped from any artifact that is compared or claimed	grep -nE 'date \+%s|wall clock|SECS' bin/*.sh
 ATTRIBUTION-DRIFT	-	-
+SCHEMA-DRIFT	ledger/SCHEMA.tsv is the single declaration of every table width and header; bin/schema.sh reads it, bin/ledger.sh delegates to it, bin/verify.sh builds fixtures at the declared width, and a .tsv with no SCHEMA row fails	for t in $(cut -f1 ledger/SCHEMA.tsv | grep -v "^#"); do echo "$t"; grep -nE "read -r|NF *[!=]= *[0-9]|cut -f[0-9]" bin/*.sh; done
+TRANSLATION-UNRECORDED	ledger/translations.tsv; bin/atlas.sh runs the round trip, so a claimed translation whose two directions disagree is refused without any adjudicator	grep -rniE "convention|units|period|normalis|scaled by" *.md question/*.md ledger/*.tsv

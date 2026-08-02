@@ -15,3 +15,14 @@ UNCHARACTERIZED-COST	census wall clock compared in STATE.md	closed
 UNCHARACTERIZED-COST	gate cost compared across two uncharacterized containers	open
 ATTRIBUTION-DRIFT	syntax-error probe caught by check 3, credited to check 2	open
 UNWITNESSED-PASS	bin/check.sh census filter unless n.isInternal, hole 6	open
+SCHEMA-DRIFT	bin/ledger.sh NF!=3 assertion against a 4-column gates.tsv	closed
+SCHEMA-DRIFT	bin/verify.sh check 8 fixtures wrote 3-field gates rows, created by the fix to the line above	closed
+SCHEMA-DRIFT	ledger/gates.tsv header comment named 3 columns above 4 columns of data	closed
+TRANSLATION-UNRECORDED	question/PREREGISTRATION.md projective period read as argument period, correct figures filed as a defect	closed
+TRANSLATION-UNRECORDED	question/evidence/Cone.lean axiom status readable only through the census, with no recorded mapping	open
+UNWITNESSED-PASS	bin/feedback.sh expiry, an unresolvable git age silently coerced to zero	closed
+UNWITNESSED-PASS	bin/ledger.sh reported a clean ledger while rejecting every gates row, because verify.sh exits first without lean	closed
+UNWITNESSED-PASS	bin/feedback.sh derived gate age from the directory it was handed, so verify.sh check 10 aborted before reaching the threshold it is named after and reported PASS	closed
+GATE-NAME-OVERCLAIMS	bin/verify.sh check 10, name says the threshold fires, asserted that something was refused	closed
+SCHEMA-DRIFT	bin/ledger.sh read 4-column gates rows into 3 variables, so the control="-" rule was dead for five commits while check 8 passed with a 3-field fixture	closed
+UNWITNESSED-PASS	bin/verify.sh check 4, three Mathlib evidence files outside the census with nothing declaring them	closed

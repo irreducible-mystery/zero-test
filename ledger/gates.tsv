@@ -1,4 +1,4 @@
-# gate_id	closes	control
+# gate_id	closes	control	expires_after
 #
 # control: the negative control that proves this gate fires. Two legal
 # placeholders: a control, or the token 'uncontrolled' -- known to have none,
@@ -16,3 +16,11 @@ verify:8	GATE-NAME-OVERCLAIMS	verify.sh check 8, case (g)	40
 check:scope	UNWITNESSED-PASS	uncontrolled	40
 verify:9	UNWITNESSED-PASS	verify.sh check 10	40
 verify:10	GATE-NAME-OVERCLAIMS	uncontrolled	never
+schema:width	SCHEMA-DRIFT	verify.sh check 12	never
+schema:complement	SCHEMA-DRIFT	verify.sh check 12, undeclared-table leg	never
+atlas:roundtrip	TRANSLATION-UNRECORDED	verify.sh check 13	never
+atlas:witness	TRANSLATION-UNRECORDED	verify.sh check 13, missing-witness leg	40
+absence:kind	UNWITNESSED-PASS	verify.sh check 14	never
+center:register	UNWITNESSED-PASS	verify.sh check 16	never
+center:empty	UNWITNESSED-PASS	verify.sh check 16, filled-center leg	40
+laps:site-exists	ATTRIBUTION-DRIFT	verify.sh check 15	40

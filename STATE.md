@@ -4,7 +4,7 @@
      Every number below was computed by a command in this run.
      bin/verify.sh regenerates this file and fails if it differs. -->
 
-Generated: 2026-08-02 13:09:20 UTC
+Generated: 2026-08-02 15:45:49 UTC
 Toolchain: Lean (version 4.22.0, x86_64-unknown-linux-gnu, commit ba2cbbf09d4978f416e0ebd1fceeebc2c4138c05, Release)
 
 ## Corpus
@@ -17,7 +17,7 @@ Toolchain: Lean (version 4.22.0, x86_64-unknown-linux-gnu, commit ba2cbbf09d4978
 | Files with forbidden axioms | 0 |
 | `sorry` warnings | 0 |
 | Census exit status | 0 |
-| Census wall clock | 13s |
+| Census wall clock | 14s |
 
 Permitted axioms are exactly `propext`, `Classical.choice`, `Quot.sound`.
 Anything else fails the run. This is an allowlist: an axiom nobody thought to
@@ -75,18 +75,20 @@ below is derived from `ledger/` by that script.
 
 | | |
 |---|---|
-| Classes | 4 |
-| Recorded sites | 13 |
-| Open sites | 5 |
-| Gates | 11 |
-| Gates with no negative control | 3 |
+| Classes | 6 |
+| Recorded sites | 24 |
+| Open sites | 6 |
+| Gates | 21 |
+| Gates with no negative control | 4 |
 
 | class | sites | open | mechanism | search key |
 |---|---|---|---|---|
-| `UNWITNESSED-PASS` | 6 | 1 | mechanized | `grep -nE 'PASS\|exit 0\|exit $fail' bin/*.sh` |
-| `GATE-NAME-OVERCLAIMS` | 4 | 2 | mechanized | `for each gate, compare its printed title to the predicate it evaluates` |
+| `UNWITNESSED-PASS` | 10 | 1 | mechanized | `grep -nE 'PASS\|exit 0\|exit $fail' bin/*.sh` |
+| `GATE-NAME-OVERCLAIMS` | 5 | 2 | mechanized | `for each gate, compare its printed title to the predicate it evaluates` |
 | `UNCHARACTERIZED-COST` | 2 | 1 | mechanized | `grep -nE 'date \+%s\|wall clock\|SECS' bin/*.sh` |
 | `ATTRIBUTION-DRIFT` | 1 | 1 | **unmechanized** | `-` |
+| `SCHEMA-DRIFT` | 4 | 0 | mechanized | `for t in $(cut -f1 ledger/SCHEMA.tsv \| grep -v "^#"); do echo "$t"; grep -nE "read -r\|NF *[!=]= *[0-9]\|cut -f[0-9]" bin/*.sh; done` |
+| `TRANSLATION-UNRECORDED` | 2 | 1 | mechanized | `grep -rniE "convention\|units\|period\|normalis\|scaled by" *.md question/*.md ledger/*.tsv` |
 
 
 The last column is what makes "a class is closed by a sweep, not a fix" a
@@ -97,10 +99,143 @@ Gates with no negative control are counted rather than tolerated silently. A
 gate whose only catch is its own control is either perfect or dead, and one with
 no control at all cannot be told apart from either.
 
+## Atlas
+
+Representations are charts. This section is the transition maps between them,
+and it is the only check here that needs no authority: a round trip that does
+not close is visible **without knowing which side is right**.
+
+| | |
+|---|---|
+| Translations | 5 |
+| Checked by round trip | 2 |
+| Checked by witness only | 3 |
+| Representations | 10 |
+| Connected components | 5 |
+| Holes (components + the center) | 6 |
+
+The genus is computed, not chosen. Each component is a set of languages that can
+reach each other; content in one island cannot leave it. Add a translation
+joining two islands and the count drops. The `+1` is the center that no
+translation removes -- see `ledger/absences.tsv`, which refuses to enumerate it.
+
+Round trip is the strong form and witness is the weak one, counted separately so
+the atlas reports its own honesty ratio instead of averaging it away.
+
+## Absences
+
+Three kinds, and only two of them are rows.
+
+| kind | count | what it means |
+|---|---|---|
+| `unknown` | 2 | askable and answerable; the key is the search |
+| `excluded` | 4 | this chart cannot express it; the key names one that can |
+| `structural` | refused | a named instance is a category error |
+
+The third kind is not absent from this table by oversight. `bin/absence.sh`
+rejects any row claiming it. Every one of the six holes in `bin/check.sh` was a
+filter invisible in its own output; none could have been written down before it
+was found, and each stopped being that kind the moment it was. A registry of
+structural absences is a registry of the ones we happened to find.
+
+What it gets instead is a counted complement -- the `SCOPE` line in
+`bin/check.sh`, and the registration sweep in `bin/center.sh`. Neither removes
+the blind spot. Both make a disagreement visible from inside.
+
+## Laps
+
+The surface is one-sided. Instruments become the objects they check, and the
+useful question about a gate is not who checks it but how many laps until it is
+the thing being checked.
+
+| | |
+|---|---|
+| Instruments in `bin/` | 12 |
+| Instruments that have appeared as a site | 5 |
+| Never yet the object | 7 |
+| Site rows | 24 |
+| Site rows naming a path | 20 |
+
+| instrument | times filed as a site | has come round |
+|---|---|---|
+| `bin/absence.sh` | 0 | **not yet** |
+| `bin/atlas.sh` | 0 | **not yet** |
+| `bin/center.sh` | 0 | **not yet** |
+| `bin/check.sh` | 4 | yes |
+| `bin/feedback.sh` | 2 | yes |
+| `bin/laps.sh` | 0 | **not yet** |
+| `bin/ledger.sh` | 3 | yes |
+| `bin/perfile.sh` | 0 | **not yet** |
+| `bin/probes.sh` | 0 | **not yet** |
+| `bin/report.sh` | 1 | yes |
+| `bin/schema.sh` | 0 | **not yet** |
+| `bin/verify.sh` | 7 | yes |
+
+
+An instrument that has never been the object is **not clean, it is unexamined**.
+That is reported as a number and not as a verdict on purpose: failing on it would
+make writing a new instrument illegal, and passing on it is the class this
+project keeps hitting.
+
+What does fail here is a site naming a path that no longer exists. The
+recurrence counts drive escalation, and a count of ghosts escalates nothing.
+
+## Center
+
+`center/` is empty and stays empty. Its size is zero; the measurable thing is
+its **degree** -- how many instruments report a domain into it. If an instrument
+stops reporting, an edge disappears and this number drops.
+
+| | |
+|---|---|
+| Instruments swept | 12 |
+| Registered | 12 |
+| Declaring a domain (degree) | 10 |
+| Declaring they enumerate nothing | 2 |
+| Bytes in `center/` | 0 |
+
+| instrument | answer to `--scope` | domain |
+|---|---|---|
+| `bin/absence.sh` | enumerates | every row of absences.tsv |
+| `bin/atlas.sh` | enumerates | every row of translations.tsv, and every representation named by one |
+| `bin/center.sh` | enumerates | every *.sh in bin/, and the contents of center/ |
+| `bin/check.sh` | enumerates | every *.lean in the working directory, and every declaration Lean added from it |
+| `bin/feedback.sh` | enumerates | every row of friction.tsv and events.tsv, and every gate they name |
+| `bin/laps.sh` | enumerates | every *.sh in bin/, and every site row that names a path |
+| `bin/ledger.sh` | enumerates | every row of classes.tsv, sites.tsv and gates.tsv |
+| `bin/perfile.sh` | enumerates | every *.lean in the named directory, and every PERFILE record in the census |
+| `bin/probes.sh` | enumerates | every *.lean and *.expect in the named probe directory |
+| `bin/report.sh` | enumerates nothing | - |
+| `bin/schema.sh` | enumerates | every *.tsv in the ledger directory |
+| `bin/verify.sh` | enumerates nothing | - |
+
+
+`center/EMPTY` is a zero-byte file that exists because **git cannot represent
+an empty directory**. That is not a workaround; it is an absence excluded by the
+storage medium of the thing being stored, and it is filed as one
+(`ledger/absences.tsv`, `a:emptydir`). The representation cannot express
+emptiness without adding content to it. The file has a name, and a name is
+content.
+
+The sweep does not remove the blind spot and does not claim to. It counts what
+it reached and requires that count to equal what the directory holds, so an
+instrument cannot arrive unregistered -- not because the sweep got smarter, but
+because the enumeration is the filesystem.
+
 ## How to check this yourself
 
     sh bin/check.sh      # from lean/ — must exit 0
     sh bin/verify.sh     # regenerates this file and diffs; must exit 0
+
+The four sections above the last one need **no toolchain and no trusted party**.
+`bin/atlas.sh` in particular decides whether a translation is sound by closing
+the loop, not by consulting anyone:
+
+    sh bin/schema.sh ledger
+    sh bin/atlas.sh ledger
+    sh bin/absence.sh ledger
+    sh bin/laps.sh .
+    sh bin/center.sh .
 
 `verify.sh` failing means either the corpus changed or someone edited this
 file by hand. Both should fail.
