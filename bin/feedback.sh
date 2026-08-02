@@ -45,15 +45,49 @@ strip "$L/events.tsv" | while IFS='	' read -r g o rest; do
 done || fail=1
 [ "$fail" -eq 0 ] || exit 1
 
+# EXPIRY. A gate stays alive by catching something. Age is derived from git --
+# commits since the row was declared -- never typed. `never` is a declared
+# terminal: an explicit claim that this gate should outlive evidence, visible in
+# a diff and counted. `-` means nobody decided, and that fails.
+echo "  -- expiry (a gate earns its life by catching) --"
+HEADN=$(git rev-list --count HEAD 2>/dev/null || echo 0)
+
 # yield, per gate. computed, never typed.
 for g in $GATES; do
     fr=$(strip "$L/friction.tsv" | cut -f1 | grep -cx "$g")
     fc=$(strip "$L/events.tsv" | awk -F'\t' -v G="$g" '$1==G && $2=="field-catch"' | wc -l | tr -d ' ')
+    exp=$(strip "$L/gates.tsv" | awk -F'\t' -v G="$g" '$1==G{print $4}')
+    case "$exp" in
+        '' ) echo "  ABORT: gate '$g' declares no expires_after. '-' is not a decision."; fail=1; continue ;;
+        '-') echo "  ABORT: gate '$g' has expires_after='-'. Decide, or write 'never'."; fail=1; continue ;;
+    esac
+
+    # AGE. Derived from git, never typed. An UNRESOLVABLE age is not age 0 --
+    # that silent coercion is exactly the vacuous-pass class, and the first
+    # version of this block committed it: the lookup failed in a temp tree, age
+    # became 0, `0 > 0` was false, and a gate with zero catches and
+    # expires_after=0 reported healthy. Unknown must refuse, not pass.
+    age=0
+    if [ "$exp" != "never" ]; then
+        born=$(git -C "$(dirname "$L")" log --format=%H -S"$g" -- "$(basename "$L")/gates.tsv" 2>/dev/null | tail -1)
+        if [ -z "$born" ]; then
+            echo "  ABORT: cannot determine age of '$g' from git. An unknown age is not"
+            echo "         age zero. Run from a checkout, or declare expires_after=never."
+            fail=1; continue
+        fi
+        age=$(git -C "$(dirname "$L")" rev-list --count "$born"..HEAD 2>/dev/null) || age=""
+        [ -n "$age" ] || { echo "  ABORT: age of '$g' unresolvable"; fail=1; continue; }
+    fi
+
     if [ "$fr" -ge 2 ] && [ "$fc" -eq 0 ]; then
         printf '  DELETION CANDIDATE  %-12s friction=%s field-catches=%s\n' "$g" "$fr" "$fc"
         fail=1
+    elif [ "$exp" != "never" ] && [ "$fc" -eq 0 ] && [ "$age" -gt "$exp" ]; then
+        printf '  EXPIRED             %-12s age=%s > expires_after=%s, field-catches=0\n' "$g" "$age" "$exp"
+        echo   '                      Delete it, or log a field-catch it actually made.'
+        fail=1
     else
-        printf '  %-20s friction=%s field-catches=%s\n' "$g" "$fr" "$fc"
+        printf '  %-20s friction=%s field-catches=%s age=%s/%s\n' "$g" "$fr" "$fc" "$age" "$exp"
     fi
 done
 exit $fail

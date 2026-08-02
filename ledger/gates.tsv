@@ -3,14 +3,16 @@
 # control: the negative control that proves this gate fires. Two legal
 # placeholders: a control, or the token 'uncontrolled' -- known to have none,
 # counted and displayed. '-' is not legal: it means nobody looked.
-verify:1	UNWITNESSED-PASS	probes/ rejected by the same census
-verify:2	UNWITNESSED-PASS	verify.sh check 6
-verify:3	UNWITNESSED-PASS	uncontrolled
-verify:4	UNWITNESSED-PASS	uncontrolled
-verify:5	UNWITNESSED-PASS	verify.sh check 5, second leg
-verify:6	GATE-NAME-OVERCLAIMS	verify.sh check 6, case (e)
-check:a	UNWITNESSED-PASS	probes/axiom_probe.lean
-check:b	GATE-NAME-OVERCLAIMS	probes/sorry_probe.lean
-verify:7	UNWITNESSED-PASS	verify.sh check 8
-verify:8	GATE-NAME-OVERCLAIMS	verify.sh check 8, case (g)
-check:scope	UNWITNESSED-PASS	uncontrolled
+verify:1	UNWITNESSED-PASS	probes/ rejected by the same census	never
+verify:2	UNWITNESSED-PASS	verify.sh check 6	never
+verify:3	UNWITNESSED-PASS	uncontrolled	40
+verify:4	UNWITNESSED-PASS	uncontrolled	40
+verify:5	UNWITNESSED-PASS	verify.sh check 5, second leg	40
+verify:6	GATE-NAME-OVERCLAIMS	verify.sh check 6, case (e)	40
+check:a	UNWITNESSED-PASS	probes/axiom_probe.lean	never
+check:b	GATE-NAME-OVERCLAIMS	probes/sorry_probe.lean	never
+verify:7	UNWITNESSED-PASS	verify.sh check 8	40
+verify:8	GATE-NAME-OVERCLAIMS	verify.sh check 8, case (g)	40
+check:scope	UNWITNESSED-PASS	uncontrolled	40
+verify:9	UNWITNESSED-PASS	verify.sh check 10	40
+verify:10	GATE-NAME-OVERCLAIMS	uncontrolled	never
