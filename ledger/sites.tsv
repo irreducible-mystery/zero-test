@@ -15,3 +15,12 @@ UNCHARACTERIZED-COST	census wall clock compared in STATE.md	closed
 UNCHARACTERIZED-COST	gate cost compared across two uncharacterized containers	open
 ATTRIBUTION-DRIFT	syntax-error probe caught by check 3, credited to check 2	open
 UNWITNESSED-PASS	bin/check.sh census filter unless n.isInternal, hole 6	open
+STATUS-UNDERCLAIMS	question/PREREGISTRATION.md root rotation range (0,1/4) marked "Computed, not proved"; tr T(G)=1 pins Re(s+)=1/2 for every G, so arg(s+) in (0,pi/2) strictly -- proof, not sample	open
+SITE-CITES-ABSENT-ARTIFACT	question/PREREGISTRATION.md "A defect found while writing this" cites gap/README.md and gap_neg_one_cube; neither exists in irreducible-mystery/zero at HEAD, whose Lean corpus is Int-only and names no complex root	open
+CONVENTION-CALLED-DEFECT	question/PREREGISTRATION.md files "period 3 at G=-1" as an error; T(-1)^3 = -I exactly, order 3 on RP^1 and 6 on R^2, so both figures are correct in their own convention	open
+SCOPE-OVERGENERAL	question/PREREGISTRATION.md "exactly half" over 1/6,1/8,1/12; the halving is the +-1 quotient and needs q even; rot=1/5 at G=-phi^2 has projective period 5, not 5/2	open
+DEFINITION-DRESSED-AS-DISCOVERY	question/PREREGISTRATION.md 1/phi^3 at G=-32.7085677 and 1/phi^4 at G=-0.6753146; rot(G)=atan(sqrt(-1-4G))/2pi is a monotone real-analytic bijection onto (0,1/4), so every target in range has exactly one G	open
+DEFINITION-DRESSED-AS-DISCOVERY	d(rot)/dG = 1/(4 pi G sqrt(-1-4G)) never vanishes on G<-1/4; no plateau, no Arnold tongue, no small-divisor structure, so nothing in the family can select a badly-approximable rotation number	open
+DEFINITION-DRESSED-AS-DISCOVERY	1/phi^3 = sqrt5-2 = [0;4,4,4,...]; tail differs from golden [0;1,1,1,...], so it is not GL(2,Z)-equivalent to phi and is not a noble number	open
+DEFINITION-DRESSED-AS-DISCOVERY	G at rot=1/phi^3 is transcendental, being cos(2 pi * algebraic irrational); true of every irrational rotation number in (0,1/4), so not a distinction	open
+MISSED-EXACT-CASE	exact golden gaps unrecorded by question/PREREGISTRATION.md: rot=1/5 iff G=-phi^2 and rot=1/10 iff G=-1/phi^2, both algebraic degree 2, against two transcendental phi^-3, phi^-4 sites that are recorded	open
