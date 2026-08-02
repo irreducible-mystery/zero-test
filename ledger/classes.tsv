@@ -10,3 +10,14 @@ UNWITNESSED-PASS	every gate emits (verdict, manifest); the manifest is the enume
 GATE-NAME-OVERCLAIMS	a gate's printed title is derived from its manifest rather than written beside it	for each gate, compare its printed title to the predicate it evaluates
 UNCHARACTERIZED-COST	machine-dependent quantities are stripped from any artifact that is compared or claimed	grep -nE 'date \+%s|wall clock|SECS' bin/*.sh
 ATTRIBUTION-DRIFT	-	-
+# Registered by the adjudicator because ledger.sh refuses a site whose class
+# does not resolve -- the registry gap the AMENDMENT names in s4. Mechanism is
+# '-' on all six: nobody has built one, which is legal below the threshold and
+# is the honest entry. Inventing a mechanism to fill the column is the class
+# this repo exists to prevent.
+STATUS-UNDERCLAIMS	-	grep -rniE 'computed, not proved|not a proof|verify before relying|numerical' question/ *.md
+SITE-CITES-ABSENT-ARTIFACT	-	for n in $(grep -ohE '[A-Za-z_][A-Za-z0-9_]*\.lean|\b[a-z_]+_[a-z_]+\b' question/*.md | sort -u); do grep -rqlF "$n" question/evidence lean probes 2>/dev/null || echo "unresolved: $n"; done
+CONVENTION-CALLED-DEFECT	-	grep -rniE 'exactly half|up to sign|wrong convention|off by a factor|true .* are' question/ *.md
+SCOPE-OVERGENERAL	-	grep -rnE '\*\*exactly |is exactly (half|twice|double)|for (all|every) ' question/ *.md
+DEFINITION-DRESSED-AS-DISCOVERY	-	grep -rniE 'phi\^|1/phi|golden|feigenbaum|edge of chaos|means anything' question/ *.md
+MISSED-EXACT-CASE	-	-
