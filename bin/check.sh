@@ -1,4 +1,6 @@
 #!/bin/sh
+
+[ "${1:-}" = "--scope" ] && { echo "DOMAIN|check|every *.lean in the working directory, and every declaration Lean added from it"; exit 0; }
 # check.sh — soundness census over EVERY declaration in a Lean file.
 #
 # HOW THE DECLARATION LIST IS OBTAINED, AND WHY IT CHANGED

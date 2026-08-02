@@ -1,4 +1,6 @@
 #!/bin/sh
+
+[ "${1:-}" = "--scope" ] && exit 3   # composes other instruments; enumerates nothing itself
 # report.sh — GENERATE STATE.md from live runs.
 #
 # There is not a single hand-typed number in the output. Every count, every exit
@@ -64,6 +66,27 @@ if ! LEDGER=$(sh "$ROOT/bin/ledger.sh" ledger 2>/dev/null); then
     echo "           Run: sh bin/ledger.sh ledger >/dev/null" >&2
     exit 5
 fi
+
+# The map. Four instruments, each computing its own section rather than stating
+# it, each aborting this report rather than emitting a section it could not
+# derive. The genus in particular is recomputed every run: it is a fact about
+# ledger/translations.tsv, not a background constant, and writing it down
+# anywhere would make it a number that can be typed wrong.
+for m in atlas:ATLAS absence:ABSENCE laps:LAPS center:CENTER; do
+    inst=${m%%:*}; var=${m#*:}
+    case "$inst" in
+        laps|center) arg="$ROOT" ;;
+        *)           arg="$ROOT/ledger" ;;
+    esac
+    if ! out=$(sh "$ROOT/bin/$inst.sh" "$arg" --md 2>/dev/null); then
+        echo "report.sh: ABORT -- bin/$inst.sh failed. Run: sh bin/$inst.sh $arg" >&2
+        exit 6
+    fi
+    # The SCOPE line is the instrument's manifest, checked by verify.sh check 11
+    # against a live run. It is not prose for a document, so it is stripped here.
+    eval "$var=\$(printf '%s\\n' \"\$out\" | grep -v '^SCOPE|')"
+done
+
 N_PROBE_CAUGHT=$(printf '%s\n' "$PROBE_ROWS" | grep -c '| CAUGHT | matched |')
 
 # lean's own opinion of each probe, to show exit code is not a gate
@@ -157,11 +180,25 @@ error at all.
 $LEAN_ON_PROBES
 
 $LEDGER
+$ATLAS
+$ABSENCE
+$LAPS
+$CENTER
 
 ## How to check this yourself
 
     sh bin/check.sh      # from lean/ — must exit 0
     sh bin/verify.sh     # regenerates this file and diffs; must exit 0
+
+The four sections above the last one need **no toolchain and no trusted party**.
+\`bin/atlas.sh\` in particular decides whether a translation is sound by closing
+the loop, not by consulting anyone:
+
+    sh bin/schema.sh ledger
+    sh bin/atlas.sh ledger
+    sh bin/absence.sh ledger
+    sh bin/laps.sh .
+    sh bin/center.sh .
 
 \`verify.sh\` failing means either the corpus changed or someone edited this
 file by hand. Both should fail.

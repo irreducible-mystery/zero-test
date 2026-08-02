@@ -1,0 +1,37 @@
+# file	ncols	columns
+#
+# THE SINGLE DECLARATION OF EVERY LEDGER TABLE'S SHAPE.
+#
+# WHY THIS FILE EXISTS
+#   gates.tsv grew a 4th column (expires_after). Three things knew the width and
+#   only one of them was updated:
+#     1. bin/feedback.sh   -- taught the new width
+#     2. bin/ledger.sh     -- asserted NF!=3, rejected every committed gates row
+#     3. bin/verify.sh     -- its fixtures wrote 3-field gates rows, so fixing
+#                             (2) broke the positive control in check 8
+#     4. this file's own header comment named 3 columns above 4 of data
+#
+#   Four sites, one class, and the third was created by the fix to the second.
+#   A width that is written down in four places is a width that will disagree
+#   with itself. It is written down once now, here, and read by:
+#     bin/schema.sh   validates every table against this file
+#     bin/ledger.sh   delegates its shape assertion to schema.sh
+#     bin/verify.sh   builds its fixtures at the declared width
+#
+#   The header line of every table is CHECKED against this file, not trusted.
+#   A comment that describes data is data, and drifts like data.
+#
+# SELF-REFERENCE: this file has a row for itself. A schema that does not
+# describe itself is the one table nobody validates.
+#
+# COMPLEMENT: schema.sh also fails if a .tsv exists in ledger/ with no row here.
+# The registry cannot quietly omit a table, because the directory listing is the
+# enumeration and the disagreement is what is reported.
+SCHEMA.tsv	3	file,ncols,columns
+classes.tsv	3	class_id,mechanism,search_key
+sites.tsv	3	class_id,site,state
+gates.tsv	4	gate_id,closes,control,expires_after
+friction.tsv	3	gate_id,site,kind
+events.tsv	2	gate_id,outcome
+translations.tsv	7	translation_id,source,target,preserves,loses,method,spec
+absences.tsv	4	absence_id,kind,site,key

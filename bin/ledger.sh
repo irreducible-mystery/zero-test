@@ -1,4 +1,6 @@
 #!/bin/sh
+
+[ "${1:-}" = "--scope" ] && { echo "DOMAIN|ledger|every row of classes.tsv, sites.tsv and gates.tsv"; exit 0; }
 # ledger.sh — validate the ledger and emit its counts. The counts are GENERATED.
 #
 #   usage: ledger.sh <ledger-dir>
@@ -71,9 +73,31 @@ done
 err() { echo "ledger.sh: $*" >&2; fail=1; }
 
 # ---- shape ----------------------------------------------------------------
-awk -F"$TAB" -v OFS= 'NF!=3 {print FILENAME": line "FNR": expected 3 tab-separated fields, found "NF}' \
-    "$work/classes" "$work/sites" "$work/gates" > "$work/shape"
-[ -s "$work/shape" ] && { sed 's/^/ledger.sh: /' "$work/shape" >&2; fail=1; }
+# NOT ASSERTED HERE ANY MORE. Delegated to bin/schema.sh, which reads one
+# declaration: ledger/SCHEMA.tsv.
+#
+# This used to be `NF!=3` -- one constant for three files. gates.tsv grew a
+# fourth column (expires_after) in cd5b90e, and four things knew the width:
+#
+#   bin/feedback.sh   was taught the new width
+#   bin/ledger.sh     still asserted 3, and rejected every committed gates row
+#   bin/verify.sh     its fixtures wrote 3-field gates rows, so fixing THIS LINE
+#                     broke the POSITIVE control in check 8
+#   gates.tsv itself  header comment named 3 columns above 4 columns of data
+#
+# Four sites, and the third was created by the fix to the second, in the same
+# change, by the same author -- inside the machinery built to stop exactly that.
+# Writing per-file widths here would have been a fifth place to write them down.
+#
+# The class is not "someone forgot". The class is that a width recorded in four
+# places will disagree with itself. It is recorded once now, and read.
+# stdout is the SCOPE line and is suppressed here; stderr is the diagnosis and
+# is not. A wrapper that hides the inner instrument's complaint is the same
+# defect as a gate that reports a verdict without its manifest.
+if ! sh "$(dirname "$0")/schema.sh" "$dir" >/dev/null; then
+    echo "ledger.sh: shape check failed -- run: sh bin/schema.sh $dir" >&2
+    fail=1
+fi
 
 # ---- classes --------------------------------------------------------------
 cut -f1 "$work/classes" | sort | uniq -d > "$work/dupclass"

@@ -1,0 +1,45 @@
+# translation_id	source	target	preserves	loses	method	spec
+#
+# THE TRANSITION MAPS OF THE ATLAS.
+#
+# A pile of representations is not one object until there are maps between the
+# overlaps. Lean, shell, git, prose and transcripts are separate charts; this
+# file is what makes them charts OF something rather than five documents about
+# the same thing.
+#
+# WHY IT EXISTS: a reader filed a defect against correct figures because the
+# continued-fraction sweep reports a period on RP-1 and the root-argument
+# convention reports one on R-2. Same object, two languages, factor of two. No
+# record of the mapping existed, so a retraction was written, then amended, and
+# a third party had to reconstruct the convention from a line number in a file
+# that had been unreachable an hour earlier. That was not an error. It was an
+# untracked transition map.
+#
+# THE PROPERTY THAT MAKES THIS WORTH HAVING: a translation failure is detectable
+# WITHOUT KNOWING WHICH SIDE IS RIGHT. You do not need a kernel, an adjudicator,
+# or an authority. You need the round trip to be the identity. Every other gate
+# in this repository resolves to "run it and see"; this one resolves to "close
+# the loop and see", and needs no privileged party at all.
+#
+# method is one of, and there is no third:
+#   roundtrip  spec is  forward|back|probe  -- awk expressions in x, and a probe
+#              value. bin/atlas.sh RUNS them: back(forward(probe)) must equal
+#              probe. A claimed translation that does not close is refused.
+#   witness    spec is a path, relative to the repo root, that MUST EXIST. This
+#              is the weaker form and it is counted separately, so the atlas
+#              reports its own honesty ratio rather than averaging it away.
+#
+# '-' in method or spec is refused. Same discipline as mechanism and control:
+# two legal answers, and "nobody looked" is not one of them.
+#
+# GENUS. bin/atlas.sh reads source and target as nodes and each row as an edge,
+# then counts connected components. Each component is a set of languages that
+# can reach each other; content in one island cannot leave it. Holes =
+# components + 1, where the +1 is the center that no translation removes. The
+# number is DERIVED and it MOVES: add a translation joining two islands and it
+# drops. The shape of the surface is a fact about this file.
+x:period	continued-fraction sweep, period on RP-1	complex-root argument, arg(s+)/2pi	the orbit	the +/-1 quotient: whether T^p is -I or +I	roundtrip	2*x|x/2|3
+x:census	Lean source text	axiom census, CollectAxioms over env.constants.map2	every declaration the elaborator added	declaration order, comments, the source spelling of names	witness	bin/check.sh
+x:perfile	census PERFILE records	STATE.md per-file table	one row per file, exact filename	nothing: it is a relabelling	witness	bin/perfile.sh
+x:claim	exploratory prose claim	Lean theorem statement	quantifiers, domain, hypotheses, conclusion	motivation, metaphor, why anyone cared	witness	question/PREREGISTRATION.md
+x:discr	GAP parameter G	quadratic-family parameter c	the orbit of the map	the naming of the branch point	roundtrip	0-x|0-x|7
