@@ -114,6 +114,10 @@ wrong every time. Check 5 exists because of that.
                     gate on lean's own `uses 'sorry'` warning
     bin/ledger.sh   validates ledger/ and generates its counts; fires the
                     escalation when a class has >=2 open sites and no mechanism
+    bin/feedback.sh validates the downward channel and computes per-gate yield;
+                    fires the deletion threshold and the expiry threshold
+    bin/tsvhdr.sh   reads a TSV's schema out of its own header row, so no
+                    consumer holds a column count or index of its own
     bin/probes.sh   runs every negative control and checks WHY it failed against
                     the signature the probe declares, not just that it failed
     bin/perfile.sh  builds the per-file table by enumerating files and looking
@@ -124,7 +128,9 @@ wrong every time. Check 5 exists because of that.
     lean/           the corpus, zero imports
     probes/         files that must fail, each with a `.expect` sidecar naming
                     the failure signature it claims to produce
-    ledger/         classes.tsv, sites.tsv, gates.tsv -- append-only, gated
+    ledger/         classes.tsv, sites.tsv, gates.tsv, friction.tsv,
+                    events.tsv -- append-only, gated. each file's header row is
+                    its schema; the readers derive shape from it
     GOVERNANCE.md   the seed: three objects, the architecture split, six rules,
                     and an honest list of what has no mechanism
     STATE.md        generated — do not edit

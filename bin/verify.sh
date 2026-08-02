@@ -1,7 +1,9 @@
 #!/bin/sh
 # verify.sh — the gate. Run this; it is the whole contract.
 #
-# Four things must hold. Any one failing exits non-zero.
+# Ten things must hold. Any one failing exits non-zero. The count was written
+# here as "four" while six were listed and ten were run -- a hand-typed number
+# in the one file that exists to stop hand-typed numbers.
 #
 #   1. the corpus passes the census      (positive control)
 #   2. EVERY probe fails FOR ITS DECLARED REASON  (negative control -- a passing
@@ -14,6 +16,15 @@
 #   5. the per-file table cannot silently shorten (negative control, no toolchain)
 #   6. a probe cannot be swapped for one that fails differently (negative control
 #                                         for check 2 -- planted, not assumed)
+#   7. the ledger is well-formed and nothing is ripe for escalation
+#   8. the ledger gate cannot be satisfied vacuously (negative control for 7)
+#   9. the feedback channel is well-formed and no gate is ripe for deletion
+#  10. the deletion threshold fires, and only when it should (control for 9)
+#
+# (8) and (10) assert the REASON a fixture was refused, not just that it was.
+# The exit code is one bit and every wrong answer has one: when gates.tsv grew a
+# fourth column, every fixture in (8) became malformed against the real schema
+# and went on printing PASS while testing a shape error instead of its own rule.
 #
 # (5) exists because (3) is weaker than it reads. Check 3 asserts regeneration is
 # DETERMINISTIC, not that it is COMPLETE. A table built by a regex that could not
@@ -185,54 +196,99 @@ echo "== 8. the ledger gate cannot be satisfied vacuously (negative control) =="
 # the ledger FAILURES.md again -- prose that cannot be thresholded, which is the
 # thing it exists to replace. Needs no toolchain.
 ld=$(mktemp -d); TAB=$(printf '\t')
-l_case() {  # <label> <accept|reject>
-    sh bin/ledger.sh "$ld" >/dev/null 2>&1; rc=$?
-    if [ "$2" = "reject" ] && [ "$rc" -eq 0 ]; then echo "   FAIL: $1 -- ACCEPTED"; fail=1
-    elif [ "$2" = "accept" ] && [ "$rc" -ne 0 ]; then echo "   FAIL: $1 -- rejected a valid ledger (exit $rc)"; fail=1
-    else echo "   PASS: $1"; fi
+l_case() {  # <label> <accept|reject> [signature the refusal must carry]
+    out=$(sh bin/ledger.sh "$ld" 2>&1); rc=$?
+    if [ "$2" = "reject" ] && [ "$rc" -eq 0 ]; then
+        echo "   FAIL: $1 -- ACCEPTED"; fail=1
+    elif [ "$2" = "accept" ] && [ "$rc" -ne 0 ]; then
+        echo "   FAIL: $1 -- rejected a valid ledger (exit $rc)"; fail=1
+        printf '%s\n' "$out" | sed 's/^/         /'
+    elif [ "$2" = "reject" ] && ! printf '%s\n' "$out" | grep -qF "${3-}"; then
+        # The exit code is one bit, and every wrong answer has one. These cases
+        # used to assert only that bit -- the same defect check 2 was fixed for
+        # one level down. It is not hypothetical here either: gates.tsv grew a
+        # fourth column, every fixture below became malformed against the real
+        # schema, and eight of them went on printing PASS while testing a shape
+        # error instead of the rule each one names.
+        echo "   FAIL: $1 -- refused, but not for its declared reason"; fail=1
+        echo "         declared: ${3-}"
+        printf '%s\n' "$out" | sed 's/^/         got: /'
+    else
+        echo "   PASS: $1"
+    fi
 }
-mkclasses() { printf "%s\n" "$1" > "$ld/classes.tsv"; }
-mksites()   { printf "%s\n" "$1" > "$ld/sites.tsv"; }
-mkgates()   { printf "%s\n" "$1" > "$ld/gates.tsv"; }
+# Fixtures carry real header rows because ledger.sh derives each file's field
+# count from one and refuses a file that has none. An optional second argument
+# replaces the header, which is how the schema cases below are planted.
+H_C="# class_id${TAB}mechanism${TAB}search_key"
+H_S="# class_id${TAB}site${TAB}state"
+H_G="# gate_id${TAB}closes${TAB}control${TAB}expires_after"
+mkclasses() { printf "%s\n%s\n" "${2-$H_C}" "$1" > "$ld/classes.tsv"; }
+mksites()   { printf "%s\n%s\n" "${2-$H_S}" "$1" > "$ld/sites.tsv"; }
+mkgates()   { printf "%s\n%s\n" "${2-$H_G}" "$1" > "$ld/gates.tsv"; }
 VALID_C="AAA${TAB}a machine${TAB}grep aaa"
 VALID_S="AAA${TAB}some/file.sh${TAB}open"
-VALID_G="g:1${TAB}AAA${TAB}a control"
+VALID_G="g:1${TAB}AAA${TAB}a control${TAB}never"
 
 mkclasses "$VALID_C"; mksites "$VALID_S"; mkgates "$VALID_G"
 l_case "a valid ledger is accepted (positive control)" accept
 
 mkclasses "# only comments"
-l_case "an empty classes.tsv is refused" reject
+l_case "an empty classes.tsv is refused" reject "classes.tsv has no entries"
 mkclasses "$VALID_C"
 
 mksites "BBB${TAB}some/file.sh${TAB}open"
-l_case "a site naming an unknown class is refused" reject
+l_case "a site naming an unknown class is refused" reject "site names unknown class 'BBB'"
 
 mksites "$(printf 'AAA%ssame%sopen\nAAA%ssame%sclosed' "$TAB" "$TAB" "$TAB" "$TAB")"
-l_case "a duplicated (class, site) row is refused" reject
+l_case "a duplicated (class, site) row is refused" reject "duplicate (class, site) rows"
 
 mksites "AAA${TAB}some/file.sh${TAB}maybe"
-l_case "a site state that is neither open nor closed is refused" reject
+l_case "a site state that is neither open nor closed is refused" reject "must be open or closed, found 'maybe'"
 mksites "$VALID_S"
 
 mkclasses "AAA${TAB}a machine${TAB}-"
-l_case "a mechanism with no search key is refused" reject
+l_case "a mechanism with no search key is refused" reject "declares a mechanism but no search key"
 
 mkclasses "AAA${TAB}a machine${TAB}grep aaa${TAB}extra"
-l_case "a row with the wrong number of fields is refused" reject
+l_case "a row with the wrong number of fields is refused" reject "header declares 3 tab-separated fields, found 4"
 mkclasses "$VALID_C"
 
-mkgates "g:1${TAB}AAA${TAB}-"
-l_case "a gate declaring no control is refused" reject
+# The same rule from the other side. The field count is DERIVED from each file's
+# header row, not written into ledger.sh: the literal 3 that used to live there
+# rejected the real ledger the day gates.tsv grew a fourth column, and widening
+# it to a literal 4 broke the fixtures above instead. Both halves are pinned
+# here -- that a stale row shape is caught, and that appending a column stays
+# legal -- because a mechanism that only ever refuses is a ban, and the next
+# column would be paid for the same way as the last one.
+mkgates "g:1${TAB}AAA${TAB}a control"
+l_case "a gates row still in the old 3-field shape is refused" reject "header declares 4 tab-separated fields, found 3"
 
-mkgates "g:1${TAB}ZZZ${TAB}a control"
-l_case "a gate closing an unknown class is refused" reject
+mkgates "g:1${TAB}AAA${TAB}a control${TAB}never${TAB}extra"
+l_case "a gates row wider than its own header is refused" reject "header declares 4 tab-separated fields, found 5"
+
+mkgates "$VALID_G" "gate_id${TAB}closes${TAB}control${TAB}expires_after"
+l_case "a ledger file with no header row is refused" reject "has no header row declaring its columns"
+
+mkgates "$VALID_G" "# closes${TAB}gate_id${TAB}control${TAB}expires_after"
+l_case "reordering a column ledger.sh reads by position is refused" reject "ledger.sh reads 'gate_id closes control' by position"
+
+mkgates "$(printf 'g:1%sAAA%sa control%snever%s2026-01' "$TAB" "$TAB" "$TAB" "$TAB")" \
+        "# gate_id${TAB}closes${TAB}control${TAB}expires_after${TAB}added"
+l_case "appending a fifth column to gates.tsv is accepted (threshold, not a ban)" accept
+mkgates "$VALID_G"
+
+mkgates "g:1${TAB}AAA${TAB}-${TAB}never"
+l_case "a gate declaring no control is refused" reject "declares no control"
+
+mkgates "g:1${TAB}ZZZ${TAB}a control${TAB}never"
+l_case "a gate closing an unknown class is refused" reject "closes unknown class 'ZZZ'"
 mkgates "$VALID_G"
 
 # THE ESCALATION ITSELF. If this one does not fire, the threshold is decoration.
 mkclasses "AAA${TAB}-${TAB}-"
 mksites "$(printf 'AAA%ssite/one%sopen\nAAA%ssite/two%sopen' "$TAB" "$TAB" "$TAB" "$TAB")"
-l_case "2 open sites with no mechanism turns the build red" reject
+l_case "2 open sites with no mechanism turns the build red" reject "ESCALATION"
 
 # ...and does NOT fire at one open site, or the threshold is just a ban.
 mksites "$(printf 'AAA%ssite/one%sopen\nAAA%ssite/two%sclosed' "$TAB" "$TAB" "$TAB" "$TAB")"
@@ -258,19 +314,75 @@ echo "== 10. the deletion threshold fires, and only when it should (negative con
 # A threshold that never fires is decoration; one that always fires is a ban.
 # Both are the same defect as a gate whose name overclaims, one level up.
 fd=$(mktemp -d); cp ledger/*.tsv "$fd/"
-quiet=$(grep -v '^#' ledger/events.tsv | grep -v '^[[:space:]]*$' | awk -F'\t' '$2=="control-only"{print $1; exit}')
+f_case() {  # <label> <accept|reject> [signature the refusal must carry]
+    out=$(sh bin/feedback.sh "$fd" 2>&1); rc=$?
+    if [ "$2" = "reject" ] && [ "$rc" -eq 0 ]; then
+        echo "   FAIL: $1 -- ACCEPTED"; fail=1
+    elif [ "$2" = "accept" ] && [ "$rc" -ne 0 ]; then
+        echo "   FAIL: $1 -- rejected a healthy channel (exit $rc)"; fail=1
+        printf '%s\n' "$out" | sed 's/^/         /'
+    elif [ "$2" = "reject" ] && ! printf '%s\n' "$out" | grep -qF "${3-}"; then
+        echo "   FAIL: $1 -- refused, but not for its declared reason"; fail=1
+        echo "         declared: ${3-}"
+        printf '%s\n' "$out" | sed 's/^/         got: /'
+    else
+        echo "   PASS: $1"
+    fi
+}
+
+# The fixture is a copy outside the git tree, so feedback.sh can resolve no
+# gate's AGE from history -- and it refuses rather than calling an unknown age
+# zero. That refusal is correct and is checked on its own below, but here it
+# fires before the threshold this check is named for is ever reached: the first
+# case passed on the wrong abort and the second one failed outright. So the
+# fixture declares every gate 'never', isolating the friction axis.
+#
+# The expires_after column is located BY NAME. Writing 4 here would plant a
+# third copy of the shape that already broke ledger.sh and these fixtures.
+xcol=$(sh bin/tsvhdr.sh ledger/gates.tsv expires_after) || xcol=''
+quiet=''
+if [ -z "$xcol" ]; then
+    echo "   FAIL: ledger/gates.tsv declares no expires_after column"; fail=1
+else
+    awk -F'\t' -v OFS='\t' -v c="$xcol" \
+        '/^#/ || /^[[:space:]]*$/ {print; next} {$(c+0)="never"; print}' \
+        ledger/gates.tsv > "$fd/gates.never.tsv"
+    ocol=$(sh bin/tsvhdr.sh ledger/events.tsv outcome)
+    quiet=$(grep -v '^#' ledger/events.tsv | grep -v '^[[:space:]]*$' \
+            | awk -F'\t' -v c="$ocol" '$(c+0)=="control-only"{print $1; exit}')
+fi
+
 if [ -z "$quiet" ]; then
     echo "   FAIL: no control-only gate to test the threshold against"; fail=1
 else
+    cp "$fd/gates.never.tsv" "$fd/gates.tsv"
     printf '%s\tprobe\tcost\n%s\tprobe\tblocked\n' "$quiet" "$quiet" >> "$fd/friction.tsv"
-    sh bin/feedback.sh "$fd" >/dev/null 2>&1
-    if [ $? -ne 0 ]; then echo "   PASS: 2 friction + 0 field-catches is refused ($quiet)"
-    else echo "   FAIL: threshold did not fire at 2 friction reports"; fail=1; fi
-    cp ledger/*.tsv "$fd/"
+    f_case "2 friction + 0 field-catches is refused ($quiet)" reject "DELETION CANDIDATE"
+
+    cp ledger/*.tsv "$fd/"; cp "$fd/gates.never.tsv" "$fd/gates.tsv"
     printf '%s\tprobe\tcost\n' "$quiet" >> "$fd/friction.tsv"
-    sh bin/feedback.sh "$fd" >/dev/null 2>&1
-    if [ $? -eq 0 ]; then echo "   PASS: 1 friction report alone does not condemn a gate"
-    else echo "   FAIL: threshold fired at 1 -- that is a ban, not a threshold"; fail=1; fi
+    f_case "1 friction report alone does not condemn a gate" accept
+
+    # The other axis the fourth column bought, and the controls it shipped
+    # without. Age is derived from git; the interesting cases are the ones where
+    # that derivation does not produce a number, because the first version of
+    # this block called those age 0 and reported a gate with zero catches and
+    # expires_after=0 healthy.
+    cp ledger/*.tsv "$fd/"
+    f_case "a gate whose age git cannot resolve is refused, not called age 0" \
+           reject "cannot determine age"
+
+    awk -F'\t' -v OFS='\t' -v c="$xcol" -v g="$quiet" \
+        '/^#/ {print; next} $1==g {$(c+0)="-"} {print}' \
+        "$fd/gates.never.tsv" > "$fd/gates.tsv"
+    f_case "expires_after='-' is refused -- a dash is not a decision" \
+           reject "Decide, or write 'never'"
+
+    # feedback.sh locates expires_after by NAME. Rename it and the script must
+    # abort, not go on reading whichever column happens to sit at index 4.
+    sed '1s/expires_after/expires_maybe/' "$fd/gates.never.tsv" > "$fd/gates.tsv"
+    f_case "a renamed expires_after column is refused, not read by position" \
+           reject "declares no 'expires_after' column"
 fi
 rm -rf "$fd"
 

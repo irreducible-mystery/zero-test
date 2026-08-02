@@ -6,7 +6,11 @@
 #     unmechanizable  we looked; there is no machine. Legal, counted, displayed.
 # search_key: a command that ENUMERATES other sites. A class without one cannot
 #   be swept, so its propagation failures are invisible and it stays local.
+#
+# The header row above is the schema. bin/ledger.sh derives this file's field
+# count from it rather than holding a number of its own; see bin/tsvhdr.sh.
 UNWITNESSED-PASS	every gate emits (verdict, manifest); the manifest is the enumeration of what it inspected, diffed against an independently derived one	grep -nE 'PASS|exit 0|exit $fail' bin/*.sh
 GATE-NAME-OVERCLAIMS	a gate's printed title is derived from its manifest rather than written beside it	for each gate, compare its printed title to the predicate it evaluates
 UNCHARACTERIZED-COST	machine-dependent quantities are stripped from any artifact that is compared or claimed	grep -nE 'date \+%s|wall clock|SECS' bin/*.sh
 ATTRIBUTION-DRIFT	-	-
+SCHEMA-RESTATED-DOWNSTREAM	readers take a file's shape from its own header row via bin/tsvhdr.sh -- the field count by counting it, a field position by naming it -- so no consumer holds a column count or a column index; the key enumerates every place a TSV is parsed, and each hit is read for a literal	grep -nE 'cut -f|-F.\\t.|-F.[$]TAB.|IFS=.[$]TAB.' bin/*.sh

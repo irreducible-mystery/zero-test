@@ -154,8 +154,13 @@ So deletion pressure is a first-class flow, and it needs a number:
   perfect or dead; one with no control cannot be told apart from either.
 - A gate whose class has recorded no new site since the gate landed has zero
   field yield. Per the architecture note above, for gates whose only actors are
-  instances that is grounds for deletion, not for suspicion. — `UNENFORCED`;
-  ordering comes from `git log ledger/sites.tsv`, and nothing computes it yet.
+  instances that is grounds for deletion, not for suspicion. — *enforced by
+  `bin/feedback.sh`, run by `verify.sh` check 9.* Every gate declares
+  `expires_after` in `ledger/gates.tsv`: a commit count past which zero
+  field-catches makes it a deletion candidate, or the declared terminal `never`.
+  Age is derived from `git`, never typed, and an age `git` cannot resolve is
+  refused rather than treated as zero. `-` is not legal in that column: it means
+  nobody decided.
 
 ## What has no mechanism, honestly
 
